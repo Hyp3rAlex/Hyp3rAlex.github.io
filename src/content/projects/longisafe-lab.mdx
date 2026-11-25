@@ -1,0 +1,216 @@
+---
+title: LongiSafe Lab
+tagline: An offline analyser for vehicle braking signals, built twice — a Python reference and an Excel/VBA workbook — and cross-checked on synthetic fault scenarios.
+summary: Functional-safety-inspired plausibility monitors for longitudinal vehicle signals. A Python reference and an independent Excel/VBA analyser read the same synthetic CSV, and a checker compares their results field by field.
+category: engineering
+alsoIn: [data]
+kind: personal
+team: false
+role: Sole author
+period: November 2026
+status: M1 prototype released and validated within its defined scope
+repo: Hyp3rAlex/longisafe-lab
+stack: [Python, Excel / VBA, pytest, GitHub Actions, matplotlib]
+facts:
+  - value: '43 + 18'
+    label: Python tests and subtests passing
+    note: Re-run 25 Nov 2026
+  - value: '9 / 9'
+    label: Excel exports cross-checked against the Python reference
+  - value: '6'
+    label: Monitors implemented in both Python and VBA
+  - value: '10'
+    label: Synthetic scenarios, reproducible byte for byte
+visual: longisafe
+order: 1
+featured: true
+audit: { revision: 12d8247, date: '2026-11-25' }
+dataNote: All signals are synthetic, produced by the repository's deterministic point-mass generator (seed 41).
+---
+
+import LongisafeArchitecture from '../../components/diagrams/LongisafeArchitecture.astro';
+import LongisafeDemo from '../../components/interactive/LongisafeDemo.astro';
+
+<Brief
+  problem="A braking event is described several times over: by speed, measured acceleration, the requested deceleration and the regen/friction force split. When one sensor is biased or frozen, each signal still looks plausible on its own, and stopping metrics computed from it are quietly wrong."
+  solution="An offline analyser that cross-checks those signals with debounced plausibility monitors and reports every finding with its evidence: rule, sample range and detection time. It exists twice, as a Python reference and as an Excel/VBA workbook, and a checker compares the two field by field."
+  role="Sole author"
+  contribution="Solo project, sole committer. The repository holds the plant model and fault scenarios, monitor and metric definitions, both implementations, the cross-checker, the test suite and the archived desktop-Excel validation run."
+  outcomes={[
+    '43 tests and 18 subtests pass (re-run on 25 Nov 2026, Python 3.12)',
+    'Excel exports for 9 of 9 valid scenarios agree with the Python reference within declared tolerances',
+    'In the synthetic regression suite the 3 monitor-detectable faults are flagged 0.3–0.5 s after injection, the malformed file is rejected at import, and the 4 healthy runs raise no FAIL',
+    'The 9 VBA modules under review are byte-identical to the code inside the tested workbook',
+  ]}
+  tech={['Python', 'Excel / VBA', 'pytest', 'GitHub Actions', 'matplotlib']}
+  repo="Hyp3rAlex/longisafe-lab"
+/>
+
+## Summary
+
+When a vehicle brakes, several signals describe the same physical event. If one of them is wrong, the others contradict it. LongiSafe Lab finds those contradictions in recorded time series and reports them with evidence: which rule, from which sample to which sample, and when it became certain.
+
+The analysis exists twice. A Python package is the numerical reference. An Excel/VBA workbook independently imports the same CSV, evaluates the same monitors, computes braking metrics, draws charts and exports a one-page report. A checker then compares the workbook's exports with Python's results, field by field, within declared tolerances.
+
+The inputs come from a deterministic point-mass model: ten braking, coasting and steady-state scenarios, several with an injected fault. The fault description goes to a separate truth file that the monitors never open, so every detection is earned from the observed signals alone.
+
+The monitors are functional-safety-inspired: gated, debounced, traceable to CSV rows, and able to answer "not evaluated" instead of guessing.
+
+## Architecture
+
+<Figure n="1" caption="One generator, two independent analysers of the same CSV, one cross-checker. Dashed boxes are side channels. Simplified: each stage box stands for several functions or VBA modules, and config files, hashes and the Python-side report renderer are left out." source="Derived from the source at 12d8247: python/longisafe/, excel/vba/, scripts/" wide>
+  <LongisafeArchitecture />
+</Figure>
+
+**Generation.** Each scenario is a small JSON config. `model.simulate` integrates a forward-only 1D point mass (1,800 kg, aerodynamic drag, rolling resistance, grade, speed- and charge-dependent regen capacity) on a 0.05 s grid and inserts one exact sample where speed reaches zero. `generator.generate` writes the observed CSV and, separately, a truth JSON with the injected fault and the CSV's SHA-256.
+
+**Ingestion.** Both analysers enforce a strict contract: exact SI column names, a fixed number grammar, strictly increasing time, speed and pedal ranges. A file that violates it is rejected with a row number and produces no results.
+
+**Gates and monitors.** MON-001 (timing gaps) and MON-002 (range) run first; if either objects, the sustained monitors return NOT_EVALUATED. MON-003 compares the speed change over a trailing 0.2 s window with the integral of measured acceleration over the same window. MON-004 flags a speed signal that stands still while acceleration says the vehicle is moving. MON-005 tracks undershoot against the requested net deceleration. MON-010 is an inventory: it reports which optional context columns the file carries. All three share one debounce: a breach must persist for 0.3 s.
+
+**Metrics and reporting.** Stop time, stop distance, filtered jerk and the regenerative share of braking work (a force × distance fraction, not a share of samples) are reported only if MON-001 to MON-004 raised no concern; otherwise a single "withheld" row replaces them. Python writes JSON and CSV. The workbook writes a one-page PDF with a native chart and four CSVs carrying the input hash and a config digest.
+
+**Cross-check.** `scripts/check_excel_exports.py` re-analyses the input in Python with the thresholds the workbook exported, then compares rule status, event count, evidence rows, times, values and metrics. `scripts/vba_source_sync.py` reads the workbook's binary VBA project with a standard-library OLE reader and byte-compares it with the nine `.bas` files, so the code under review is the code inside the tested workbook.
+
+## Engineering decisions
+
+### Two independent implementations instead of one trusted one
+
+The alternative was a single Python analyser with unit tests. The repository implements the monitors and metrics a second time in VBA and treats agreement between the two as the evidence: a second implementation written against the same definitions catches errors of interpretation that tests written by the same author tend to share. The cost is two code bases to keep aligned (374 lines of Python package, 852 lines of VBA) and a comparison tool with explicit tolerances:
+
+<p class="src">scripts/check_excel_exports.py:40-41 @ 12d8247</p>
+
+```python
+    # Algorithms match definitions but arithmetic implementations are independent.
+    tolerances={'stop_time_s':.003,'stop_distance_m':.02,'regen_work_J':.1,'regen_work_fraction':1e-6,'jerk_peak_mps3':1e-6,'jerk_rms_mps3':1e-6}
+```
+
+The trade-off: the checker compares exported files, so the link between workbook and exports rests on the smoke-test run described under Validation.
+
+### A debounced monitor that is allowed to say "not evaluated"
+
+One routine accumulates evidence for MON-003, MON-004 and MON-005. It refuses to return PASS if the timing or range gates failed, or if the usable data is shorter than the evidence time. A breach shorter than the evidence time is discarded; a longer one is recorded with its first sample, last sample and the sample at which it became a detection.
+
+<p class="src">python/longisafe/analysis.py:35-46 @ 12d8247</p>
+
+```python
+        events=[];start=None;det=None
+        for i in range(n+1):
+            hit=i<n and values[i] is not None and (eligible is None or eligible[i]) and values[i]>limit
+            if hit:
+                if start is None:start=i
+                if det is None and t[i]-t[start]>=c.evidence_s-1e-9:det=i
+            elif start is not None:
+                if det is not None:events.append((start,i-1,det))
+                start=None;det=None
+        if events:
+            for s,e,d in events:result(rid,'FAIL',reason,limit,max(values[s:e+1]),unit,prereq,s,e,d)
+        else:result(rid,'PASS','Evaluated; no sustained threshold breach',limit,max(values[i] for i in available),unit,prereq)
+```
+
+The alternative, a per-sample threshold, would fire on single noisy samples. The trade-off is latency: a fault cannot be reported sooner than the evidence time, so the 0.3 to 0.5 s detection delays in the fixtures are a design parameter, not a measured performance figure. There is no hysteresis and no latching: each sufficiently long run is its own event.
+
+### Reject malformed input, never coerce it
+
+Spreadsheet tooling tends to accept whatever it can parse. Here a file with a quoted field, an unknown header, a non-finite number or a repeated timestamp is rejected outright:
+
+<p class="src">python/longisafe/csv_schema.py:28-33 @ 12d8247</p>
+
+```python
+            if not NUMBER.fullmatch(s): raise ContractError(f'Row {rownum}: invalid number in {h}')
+            v=float(s)
+            if not math.isfinite(v) or abs(v)>1e100: raise ContractError(f'Row {rownum}: nonfinite/oversized {h}')
+            d[h]=v
+        if d['time_s']<0: raise ContractError(f'Row {rownum}: negative time')
+        if rows and d['time_s']<=rows[-1]['time_s']: raise ContractError(f'MON-001 row {rownum}: time not strictly increasing')
+```
+
+The VBA side needed more care, because `Val("3oops")` quietly returns 3. `modCore.Num` therefore checks the same decimal grammar by hand before converting (`excel/vba/modCore.bas:52-87`), and the import routine clears all previous outputs before it attempts a new file, so a rejected file cannot leave stale results on screen. Twelve malformed-input cases are covered by subtests on the Python side. The price is a narrow contract: an ASCII, unquoted, numeric-only CSV subset. Text columns are rejected.
+
+### Fault truth stays out of the monitor's reach
+
+The generator knows exactly what it injected. Writing that into the same file as the signals would make it easy for a monitor to cheat, even by accident. The observed CSV and the truth go to different directories, and the analysis module imports nothing that could read the second one:
+
+<p class="src">python/longisafe/generator.py:40-42 @ 12d8247</p>
+
+```python
+        data=root/'data/synthetic'/f'{sid}.csv';write_csv(data,rows)
+        truth.update(scenario_id=sid,seed=cfg['seed'],generator_version=__version__,config=cfg,injections=injections,data_sha256=hashlib.sha256(data.read_bytes()).hexdigest())
+        tp=root/'data/ground_truth'/f'{sid}.json';tp.parent.mkdir(parents=True,exist_ok=True);tp.write_text(json.dumps(truth,indent=2))
+```
+
+Truth is read only by the suite runner and the tests, to compute detection latency. In the regression suite the three monitor-detectable faults are flagged, the fourth fault scenario (a repeated timestamp) is rejected at import, and the four healthy cases raise no FAIL.
+
+## Demo
+
+Four of the ten scenarios, replayed through a TypeScript port of the Python reference monitors that runs in your browser.
+
+<TryIt
+  steps={[
+    'Select <b>S10 Frozen speed signal</b>. MON-003 and MON-004 both fail, 0.35 s and 0.50 s after the fault begins, and the stop distance is withheld.',
+    'Raise <b>Evidence time (debounce)</b> to 1.00 s. Both detections move later by the same 0.70 s: latency is a design parameter.',
+    'Raise it to 2.50 s. The breach runs last 1.80 s and 2.15 s, so from 2.20 s every monitor passes and a stop distance appears, computed from the corrupted signal. Press <b>Reset</b>.',
+  ]}
+/>
+
+<div class="full">
+  <LongisafeDemo />
+</div>
+
+Two more things to try. In **S09**, the injected bias is 1.5 m/s², so MON-003 stops failing once its limit passes that value; MON-005 fails as well, which is correlated evidence of one fault rather than two. An evidence time of 2.10 s is already enough to clear S09. In **S14** the shortfall lasts until standstill, so no evidence time on the slider hides it.
+
+## Validation
+
+**Re-run for this page on 25 Nov 2026**, at revision `12d8247`, in a clean copy of the repository (Python 3.12, Linux):
+
+<div class="table-scroll" tabindex="0" role="group" aria-label="Table">
+
+| Check | Result |
+|---|---|
+| `pytest -q` | 43 passed, 18 subtests passed |
+| `python -m unittest`, standard library only | 43 tests run, 3 report tests skipped, OK |
+| Regenerate all 10 datasets and compare hashes with the committed CSVs | Byte-identical |
+| `check_all_excel_exports.py` on the archived Excel exports | 9 of 9 valid scenarios PASS |
+| `vba_source_sync.py` | 9 modules match the workbook byte for byte |
+
+</div>
+
+**Reported by the repository.** The repository documents a smoke-test run of the workbook on Windows desktop Excel on 12 Nov 2026: all ten fixtures behaved as expected, including the rejection of S11 for a repeated timestamp at CSV row 82. What that run exported is archived under [`evidence/excel_smoke/`](https://github.com/Hyp3rAlex/longisafe-lab/tree/12d8247/evidence/excel_smoke): a one-page PDF per valid scenario (for example [S05](https://github.com/Hyp3rAlex/longisafe-lab/blob/12d8247/evidence/excel_smoke/S05/summary.pdf) and [S14](https://github.com/Hyp3rAlex/longisafe-lab/blob/12d8247/evidence/excel_smoke/S14/summary.pdf)), the rule, metric, config and metadata CSVs, and the [smoke result table](https://github.com/Hyp3rAlex/longisafe-lab/blob/12d8247/evidence/excel_smoke/smoke_results.csv). Those archived exports are what the cross-checker compared on 25 Nov 2026; the Excel run itself was not repeated for this page. The smoke macro's own pass criterion is coarse (expected rule and status present, or no FAIL), so the numerical agreement comes from the cross-checker. The GitHub Actions workflow was observed passing on `main` and on tag `v0.1.0-m1` on 25 Nov 2026, after a failed first run on the initial commit. A requirements table in the repository maps each requirement to its implementation, scenario and evidence.
+
+**Results on the fixtures, default thresholds.** Detection follows the injection at 3.0 s by 0.4 s in S09 (MON-003), 0.35 s in S10 (MON-003, with MON-004 at 0.5 s) and 0.3 s in S14 (MON-005). In S05, where friction compensates the lost regeneration, the stop takes 102.06 m and 8.25 s from brake onset and no monitor fails. In S14, without compensation, it takes 318.59 m and 32.50 s, and MON-005 fails from 3.00 s to 33.30 s.
+
+**The port on this page** has its own Vitest suite: all ten rule rows for each of the four shipped scenarios, 104 one-parameter threshold sweeps computed with the Python reference, the withholding logic, cases mirrored from the repository's test suite, and the read-out and chart builders.
+
+<details>
+<summary>What the Python test suite covers</summary>
+
+Closed-form stopping checks (v₀/a and v₀²/2a), grade sign, the traction cap, regen capacity limits, twelve malformed-CSV rejections, per-scenario expected verdicts, metric withholding, byte-reproducible generation, the absence of truth in the input, and hand-solvable stop and work oracles. The Python tests do not execute VBA; the workbook is covered by the smoke test and the export cross-check.
+
+</details>
+
+## My contribution
+
+This is a solo project and I am the repository's only committer. It contains the plant model and scenario set, the monitor and metric definitions, both implementations, the cross-checker, the workbook/source synchronisation script, the test suite, the documented assumptions and the archived exports of the desktop-Excel run.
+
+As the repository's README states, the project was developed iteratively with AI-assisted coding and validated through the documented reproducible tests and actual Excel runs.
+
+## Limitations
+
+- **Synthetic data only.** A point-mass model without ABS or ESC, with a simplified traction envelope and assumed regen capacity curves. Speed carries no noise in the fixtures, so the results do not transfer to real sensor signals.
+- **A demonstrator, not a safety artefact.** Thresholds are illustrative. There is no hazard analysis and no conformance with any functional-safety standard; FAIL means a configured rule was violated, PASS means no sustained configured breach.
+- **Scope of M1.** Six of ten monitor IDs are implemented; MON-006 to MON-009 are placeholders that return NOT_EVALUATED. Eight of the sixteen scenarios in the planned matrix exist, plus a missing-context and a 10,001-row performance fixture.
+- **Blind spots.** MON-004 cannot see a frozen speed signal at steady state. Faults shorter or smaller than the configured evidence time and limits pass unnoticed, as the demo shows. The monitors flag contradictions; they do not isolate causes. The fixture results are a regression outcome on scenarios the thresholds were designed around, not a detection rate, and S05 versus S14 is an illustration rather than a controlled experiment.
+- **Excel evidence.** One run on one Windows machine, without screenshots or a recorded Excel build. The smoke test always imports before it analyses, so changing a threshold inside the workbook without re-importing, and the scenario-comparison sheet, are outside the validated scope.
+- **Input contract.** ASCII, unquoted, numeric CSV with exact SI headers; Windows desktop Excel only. The `adas_brake_request_mps2` column is accepted but not used, and the Python and VBA config digests use different encodings, so they cannot be compared with each other.
+- **Repository housekeeping.** A few documents predate the Excel run and still describe it as pending, and the README lists only MON-004 for S10 where MON-003 fails as well. No licence has been chosen yet.
+
+## What I would do next
+
+**Lessons from M1.** A debounce buys robustness against single noisy samples at the price of latency and a blind spot for short faults, and the demo makes that trade visible. Writing the analysis a second time surfaced interpretation problems a single implementation hides, such as VBA's `Val` accepting malformed numbers. Documentation written before a validation step goes stale the moment the step is done.
+
+- Repeat the Excel smoke test on a second machine, record the Excel build, and capture screenshots of the workbook.
+- Extend the smoke test to threshold changes without re-import and to the scenario-comparison sheet.
+- M2: regen-to-friction transition and terminal-stop monitors, a force residual, the eight remaining scenarios, and held-out seeds the thresholds were not tuned on.
+- M3: parameter sweeps and a simple arbitration between driver and assistance-system brake requests.
+- Add noise to the speed signal and study false-alarm behaviour.
+- Update the stale documents and choose a licence.

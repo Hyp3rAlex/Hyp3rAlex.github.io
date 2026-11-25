@@ -1,0 +1,260 @@
+---
+title: Demographics Service
+tagline: A Spring Boot service that ingests U.S. county population from a public ArcGIS layer, aggregates it by state and serves it over REST.
+summary: A layered Java backend that fetches 3,144 county records from an ArcGIS FeatureServer in two pages, aggregates them into 50 state rows, and replaces the stored snapshot in one PostgreSQL transaction every hour.
+category: software
+alsoIn: [data]
+kind: application
+team: false
+role: Sole author
+context: Independent application project, 2026
+period: January 2026
+status: Complete as submitted
+repo: Hyp3rAlex/demographics-service
+stack: [Java 17, Spring Boot 3.5, Spring Data JPA, PostgreSQL 15, Docker Compose, JUnit 5]
+facts:
+  - value: '3,135 → 50'
+    label: County records summed into state rows
+    note: 3,144 fetched, 9 skipped as null · 25 Nov 2026
+  - value: '2 pages'
+    label: ArcGIS requests per refresh
+    note: Page size 2,000
+  - value: '1 txn'
+    label: Delete-and-reinsert refresh, hourly
+  - value: '2'
+    label: REST endpoints
+visual: demographics
+order: 2
+featured: true
+audit: { revision: 1bf9c87, date: '2026-11-25' }
+dataNote: Demo data is a static snapshot of the public Esri “USA Census Counties” layer, retrieved 25 Nov 2026. Sources — Esri; U.S. Census Bureau.
+---
+
+import DemographicsArchitecture from '../../components/diagrams/DemographicsArchitecture.astro';
+import DemographicsDemo from '../../components/interactive/DemographicsDemo.astro';
+
+<Brief
+  problem="U.S. population is published per county in a public ArcGIS layer: 3,144 records, served at most 2,000 per response. The layer is county-level and paged; this service provides state-level totals from a single REST call."
+  solution="A Spring Boot service that pages through the layer every hour, aggregates counties to states with a Java stream, replaces a PostgreSQL table in a single transaction and serves the totals from two REST endpoints."
+  role="Sole author"
+  contribution="Design and implementation of the whole service: ArcGIS client, aggregation, persistence, REST API, Docker packaging and unit test."
+  outcomes={[
+    '3,144 county records fetched in 2 paged requests; 3,135 summed into 50 state rows, 9 skipped as null (live layer, 25 Nov 2026)',
+    'Texas total of 30,506,523 reproduced exactly by an independent re-run of the pipeline logic',
+    'Atomic refresh: delete and re-insert in one transaction, so readers see the old table or the new one',
+    'Source review traced a missing state to null upstream data meeting a three-line filter',
+  ]}
+  tech={['Java 17', 'Spring Boot 3.5', 'Spring Data JPA', 'PostgreSQL 15', 'Docker Compose', 'JUnit 5']}
+  repo="Hyp3rAlex/demographics-service"
+/>
+
+## Summary
+
+Esri publishes U.S. population per county as a public ArcGIS FeatureServer layer. This service turns it into per-state totals: it pages through the layer on a schedule, sums the counties, stores the result in its own database and serves it over two plain REST endpoints.
+
+I built it in January 2026 as an independent application project. It is a Spring Boot 3.5.9 application on Java 17 with a scheduled ingestion job, a stream aggregation, a PostgreSQL 15 table and a small controller, packaged with a multi-stage Dockerfile and a Compose file. About 440 lines of main Java in 12 source files.
+
+For this page the source was reviewed line by line and its two ArcGIS queries were replayed against the live layer. The pipeline logic holds up — the Texas total reproduces exactly — and the review produced one finding worth a section of its own: why the service currently returns 50 rows and not 51.
+
+## Architecture
+
+<Figure n="1" caption="Data flow as implemented. Arrows show the direction data moves; the dashed box is the external system, the shaded band is one database transaction. Simplified: the JPA repository and entity between the service and PostgreSQL, and the DTO classes, are not drawn." source="Derived from the source at 1bf9c87. Feature counts: live layer, 25 Nov 2026.">
+  <DemographicsArchitecture />
+</Figure>
+
+A single Maven module in a layered layout: scheduler, service, outbound client, JPA repository, controller.
+
+1. **Trigger.** `StatePopulationScheduler` runs on `@Scheduled(fixedRateString = "${scheduler.state-population.rate-ms}")` with the rate set to 3,600,000 ms and no initial delay: once at startup, then hourly.
+2. **Fetch.** `ArcGisClient` queries layer 0 of `USA_Census_Counties` with `outFields=population,state_name`, `returnGeometry=false` and offset paging at 2,000 records. On 25 Nov 2026 the layer held 3,144 features, so one refresh is two requests: 2,000 and 1,144 records. The `WebClient` has a 5 s connect and a 10 s response timeout.
+3. **Aggregate.** `StatePopulationService` drops records with a null state name or population, groups by state name and sums. Of the 3,144 records fetched, 9 are skipped and 3,135 are summed into 50 rows.
+4. **Replace.** In the same transaction the service deletes every row of `state_population` and saves the new totals with one shared timestamp.
+5. **Serve.** `StatePopulationController` exposes `GET /api/states` (a JSON array) and `GET /api/states/{stateName}` (one object, or 404) on port 8080. Each row is `stateName`, `population`, `updatedAt`.
+
+Java paths quoted below as `…/` are under `src/main/java/com/example/demographics/`.
+
+## Engineering decisions
+
+### Page to the server's limit, request only two fields
+
+The layer caps a response at 2,000 records and there are 3,144 counties, so a single query would return a truncated set without an error. The client pages by offset, skips geometry and asks only for the two attributes it sums.
+
+<p class="src">…/client/ArcGisClient.java:36-48 @ 1bf9c87</p>
+
+```java
+response = webClient.get()
+        .uri(uriBuilder -> uriBuilder
+                .path("/USA_Census_Counties/FeatureServer/0/query")
+                .queryParam("where", "1=1")
+                .queryParam("outFields", "population,state_name")
+                .queryParam("returnGeometry", "false")
+                .queryParam("f", "json")
+                .queryParam("resultOffset", currentOffset)
+                .queryParam("resultRecordCount", PAGE_SIZE)
+                .build())
+        .retrieve()
+        .bodyToMono(ArcGisResponseDto.class)
+        .block(Duration.ofSeconds(10));
+```
+
+The loop ends on an empty page or one shorter than the page size (`ArcGisClient.java:55-69`).
+
+**Trade-off.** "Short page means last page" is simple and correct while the server's cap is at least the client's page size. The sturdier signal is the `exceededTransferLimit` flag ArcGIS sets when more records remain; the response DTO already maps it, and reading it — together with an explicit `orderByFields` — would make paging independent of the server's configuration.
+
+### Replace the whole table in one transaction
+
+Each refresh recomputes every state and swaps the table contents: a delete-and-reinsert, not a per-row upsert.
+
+<p class="src">…/service/StatePopulationService.java:34-55 @ 1bf9c87</p>
+
+```java
+@Transactional
+public void updateStatePopulations() {
+
+        List<CountyAttributesDto> counties = arcGisClient.fetchAllCounties();
+
+        Map<String, Long> populationByState = counties.stream()
+                        .filter(a -> a.getStateName() != null &&
+                                        a.getPopulation() != null)
+                        .collect(Collectors.groupingBy(
+                                        CountyAttributesDto::getStateName,
+                                        Collectors.summingLong(CountyAttributesDto::getPopulation)));
+
+        Instant now = Instant.now();
+
+        // стратегия за обновяване: изчистваме старите резултати
+        statePopulationRepository.deleteAllInBatch();
+
+        populationByState.forEach((stateName, population) -> {
+                StatePopulation entity = new StatePopulation(stateName, population, now);
+                statePopulationRepository.save(entity);
+        });
+}
+```
+
+(The Bulgarian comment reads "refresh strategy: we clear the old results".)
+
+**What this buys.** The refresh is idempotent: running it twice gives the same table. A state that disappears upstream disappears here too, which a per-row update would not do. Delete and inserts commit together, so a reader sees either the old table or the new one. A timeout or an HTTP error from ArcGIS throws inside `fetchAllCounties()`, before the delete, and the previous data stays in place.
+
+**Trade-off.** For about 50 rows an hour this is the simplest of the options; an upsert or a staging-table swap would do the same job with more moving parts. Two consequences follow from the code: the HTTP calls run inside the database transaction, and an HTTP 200 response that carries no `features` (the way ArcGIS reports some errors) yields an empty list, which the refresh would store as an empty table. A minimum-row guard before the delete closes that path; it is the first item under next steps.
+
+### The null filter, and why the API returns 50 rows
+
+The stream filters out records with a null state name or population, which keeps `summingLong` from meeting a null:
+
+<p class="src">…/service/StatePopulationService.java:39-44 @ 1bf9c87</p>
+
+```java
+Map<String, Long> populationByState = counties.stream()
+                .filter(a -> a.getStateName() != null &&
+                                a.getPopulation() != null)
+                .collect(Collectors.groupingBy(
+                                CountyAttributesDto::getStateName,
+                                Collectors.summingLong(CountyAttributesDto::getPopulation)));
+```
+
+Replaying the service's queries against the live layer on 25 Nov 2026 shows the filter doing real work. The layer lists nine records for Connecticut — the planning regions that replaced its counties — and all nine carry `POPULATION: null`. The filter drops them, no group is formed, and Connecticut gets no row.
+
+**Impact on the results.** The service returns **50 rows (49 states and the District of Columbia) instead of 51**, the total of 333,859,535 excludes Connecticut, and `GET /api/states/Connecticut` answers 404. The card visual, the demo and every figure on this page show exactly that output.
+
+**The engineering point.** Protecting the sum is correct; the gap is that a dropped record leaves no trace. A filter at a system boundary should count what it removes, so that an upstream data change shows up as a number instead of as a missing row.
+
+### A path variable on the natural key
+
+The single-state lookup is a path variable resolved against the primary key, the state name:
+
+<p class="src">…/api/controller/StatePopulationController.java:34-41 @ 1bf9c87</p>
+
+```java
+@GetMapping("/{stateName}")
+public ResponseEntity<StatePopulationResponseDto> getStateByName(
+        @PathVariable String stateName
+) {
+    return service.getByStateName(stateName)
+            .map(sp -> ResponseEntity.ok(toDto(sp)))
+            .orElse(ResponseEntity.notFound().build());
+}
+```
+
+**Trade-off.** A natural key keeps the schema to one table with three columns and makes the lookup a key read. The match is exact and case-sensitive, and names with spaces are URL-encoded (`District%20of%20Columbia`).
+
+The README documents a different form, `GET /api/states?name=Texas`. The code is the contract:
+
+<div class="table-scroll" tabindex="0" role="group" aria-label="Table">
+
+| Request | README says | Code does |
+|---|---|---|
+| <code style="white-space:nowrap">GET /api/states?name=Texas</code> | array with one object | `name` ignored; array of all rows |
+| <code style="white-space:nowrap">GET /api/states/Texas</code> | not documented | `200`, one object |
+| <code style="white-space:nowrap">GET /api/states/texas</code> | not documented | `404`, empty body |
+
+</div>
+
+## Demo
+
+A **static replay** of the API in your browser: a TypeScript re-implementation of the controller's contract answers requests from a snapshot of the service's output, built with the service's own two queries on 25 Nov 2026. State-level aggregates only. The explorer's metric control adds record counts and shares computed from that snapshot; the service itself returns population.
+
+<TryIt
+  steps={[
+    'Press the <b>…/Texas</b> preset: the response is <b>200</b> with a single JSON object.',
+    'In the explorer, type <b>conn</b> into the filter: Connecticut appears as a <b>skipped</b> row.',
+    'Select the name <b>Connecticut</b> in that row: the replay sends its request and answers <b>404</b> with an empty body.',
+  ]}
+/>
+
+<DemographicsDemo />
+
+## Validation
+
+**Re-run for this page, 25 Nov 2026**
+
+- The two query URLs the client builds, issued against the live layer: 2,000 + 1,144 = 3,144 features, equal to the layer's own record count.
+- The aggregation, re-implemented outside the service and run on those pages: 50 rows, 9 records skipped (all Connecticut), total 333,859,535.
+- Texas comes out at 30,506,523, identical to the sample response in the README from January 2026 — an independent check of the pipeline logic.
+- The demo's routing, sorting, filtering and metric functions are unit-tested with Vitest against the snapshot's spot-check values (Texas, California, the 50-row count, the total) and the controller's behaviour as read from the source. The TypeScript mirror of the aggregation is tested on small fixtures only, because no county rows are shipped.
+
+**Reported by the repository at `1bf9c87`**
+
+- One unit test: `StatePopulationServiceTest`, one `@Test` method, with JUnit 5, Mockito and AssertJ. It mocks the client and the repository, feeds three counties (Texas 100 and 200, California 300) and asserts one `deleteAllInBatch()`, two `save` calls and both sums equal to 300.
+- Counted by inspection; not executed for this page. The service itself was not built or started for this page either.
+
+## My contribution
+
+I am the sole author; both commits in the repository are mine. The skeleton comes from Spring Initializr (the `com.example` package, the Maven wrapper scripts, `HELP.md`). The client, the aggregation and persistence logic, the controller, the configuration, the Dockerfile, the Compose file, the test and the README are my work.
+
+The repository holds the finished project as a single upload, so it carries no development history.
+
+## Limitations
+
+- **Connecticut has no row** while its upstream population is null, and skipped records are not counted or logged.
+- **No guard against an empty fetch result** before the table is replaced. Derived by reading the code; not reproduced against a running instance.
+- **Paging ends on a short page** and sets no explicit order.
+- **The README documents `?name=Texas`**; the code implements `/api/states/{stateName}`.
+- **Test coverage is one unit test** of the aggregation. Pagination, error paths, the controller and the repository are untested, and there is no CI.
+- **The population figures carry no year.** The layer's metadata is ambiguous about the vintage of the field, so they are labelled "population as published in Esri's USA Census Counties layer" and tied to the retrieval date.
+
+<details>
+<summary>Packaging and operations details</summary>
+
+- The README says `docker compose up --build`, but the `app` service names an image and has no `build:` key (`docker-compose.yml:14-16`), so the image has to be built first with `docker build -t demographics-app .`. Read from the file; not executed.
+- `depends_on` has no health check, so the application can start before PostgreSQL accepts connections.
+- The Maven wrapper's `.mvn/` directory is not in the repository, and the image build skips tests with `-DskipTests`.
+- No retry, logging, health or metrics endpoint. With a fixed-rate schedule the next attempt after a failed refresh is expected an hour later (Spring's documented behaviour; not observed).
+- The WebFlux starter is included only for `WebClient`, which is called synchronously with `.block()` in a servlet application.
+- Unused code remains: `StatePopulation.updatePopulation`, the mapped but unread `exceededTransferLimit`, and `findByStateName`, which duplicates `findById`.
+- The schema is created by Hibernate `ddl-auto: update`; there are no migrations.
+- No authentication, pagination, sorting or OpenAPI description; list order is whatever `findAll()` returns, and a miss has no error body.
+- The runtime image is a full JDK running as root, and Compose publishes the PostgreSQL port with development-default credentials.
+- The repository has no licence file.
+
+</details>
+
+## What I would do next
+
+The review's main lesson: a filter at a system boundary should count what it drops, and a replace-all refresh needs a guard before the delete. Proposed changes follow; the repository stays as submitted.
+
+1. **Guard the refresh.** Abort before the delete when the fetch returns no features, or far fewer states than the previous run.
+2. **Make dropped records visible.** Count and log what the null filter removes and expose the last refresh status, so Connecticut reads as "upstream population unavailable" instead of "not found" — or source its total from Census Bureau data.
+3. **Harden paging.** Follow `exceededTransferLimit` with `orderByFields=OBJECTID`, and move the HTTP fetch outside the database transaction.
+4. **Align the contract.** Update the README to the path-variable route, add case-insensitive lookup, a sorted list and an error body for misses.
+5. **Fix the packaging.** `build: .` and a health-checked `depends_on` in Compose, the `.mvn/` directory, a non-root JRE image, tests in the image build, CI.
+6. **Test where the risk is.** Client pagination against a mock server, the controller with MockMvc, the repository against PostgreSQL in a container; versioned migrations instead of `ddl-auto`.

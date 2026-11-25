@@ -1,0 +1,468 @@
+---
+/**
+ * Hero signature: the AY monogram as an inspectable engineering drawing.
+ * Every annotation is true — dimensions are the mark's real geometry on its 44 × 32 unit grid and the
+ * title block carries real build metadata. With a pointer (or a tap) the sheet becomes a measuring
+ * instrument: a crosshair reports the position in grid units and snaps to the construction nodes.
+ * Without JavaScript or with reduced motion it is a static, fully labelled drawing.
+ */
+import { buildInfo } from '../../lib/build-info';
+
+interface Props {
+  /** Unique prefix for element ids when the sheet is rendered more than once on a page. */
+  uid?: string;
+}
+const { uid = 'sheet' } = Astro.props;
+
+const U = 9; // px per grid unit
+const ox = 52;
+const oy = 74;
+const x = (u: number) => ox + u * U;
+const y = (u: number) => oy + u * U;
+const W = ox * 2 + 44 * U;
+const H = 400;
+
+const nodes = [
+  { id: 'A1', u: 3, v: 29, name: 'A · left foot' },
+  { id: 'A2', u: 15, v: 3, name: 'A · apex' },
+  { id: 'A3', u: 27, v: 29, name: 'A · right foot' },
+  { id: 'Y1', u: 27.5, v: 3, name: 'Y · left arm' },
+  { id: 'Y2', u: 34, v: 17, name: 'Y · junction' },
+  { id: 'Y3', u: 40.5, v: 3, name: 'Y · right arm' },
+  { id: 'Y4', u: 34, v: 29, name: 'Y · foot' },
+];
+---
+
+<drawing-sheet data-u={U} data-ox={ox} data-oy={oy} data-w={W} data-h={H} data-nodes={JSON.stringify(nodes)}>
+  <figure class="sheet corner-marks" aria-label="Drawing sheet of the AY monogram with its construction dimensions">
+    <div class="sheet-head mono" aria-hidden="true">
+      <span>DWG AY-001</span>
+      <span class="readout" data-readout data-idle="Monogram · construction">Monogram · construction</span>
+      <span>Sheet 1 / 1</span>
+    </div>
+
+    <svg class="drawing" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${uid}-title ${uid}-desc`}>
+      <title id={`${uid}-title`}>AY monogram, construction drawing</title>
+      <desc id={`${uid}-desc`}>
+        The angular AY monogram drawn on a 44 by 32 unit grid. The legs of the A and the arms of the Y share a 65
+        degree slope. The mark is 37.5 units wide and 26 units tall.
+      </desc>
+
+      <!-- unit grid, every 4 units -->
+      <g class="grid">
+        {Array.from({ length: 12 }, (_, i) => <path d={`M${x(i * 4)} ${y(-3)}V${y(35)}`} />)}
+        {Array.from({ length: 10 }, (_, i) => <path d={`M${x(-3)} ${y(i * 4 - 2)}H${x(47)}`} />)}
+      </g>
+
+      <!-- construction lines: cap line, baseline, axes, shared slope -->
+      <g class="construct">
+        <path d={`M${x(-3)} ${y(3)}H${x(47)}`} />
+        <path d={`M${x(-3)} ${y(29)}H${x(47)}`} />
+        <path d={`M${x(15)} ${y(-2)}V${y(34)}`} />
+        <path d={`M${x(34)} ${y(-2)}V${y(34)}`} />
+        <path d={`M${x(15 - 12 * 0.19)} ${y(3 - 26 * 0.19)}L${x(27 + 12 * 0.19)} ${y(29 + 26 * 0.19)}`} />
+        <path d={`M${x(27.5 - 6.5 * 0.36)} ${y(3 - 14 * 0.36)}L${x(34 + 6.5 * 0.9)} ${y(17 + 14 * 0.9)}`} />
+      </g>
+
+      <!-- the mark -->
+      <g class="mark" transform={`translate(${ox} ${oy}) scale(${U})`}>
+        <path pathLength="1" d="M3 29 15 3 27 29"></path>
+        <path pathLength="1" d="M11.5 21h7"></path>
+        <path pathLength="1" d="M27.5 3 34 17l6.5-14"></path>
+        <path pathLength="1" d="M34 17v12"></path>
+      </g>
+
+      <!-- dimensions -->
+      <g class="dim">
+        <path d={`M${x(3)} ${y(32.5)}V${y(35.2)}M${x(40.5)} ${y(6)}V${y(35.2)}M${x(3)} ${y(34.4)}H${x(40.5)}`} />
+        <path d={`M${x(3)} ${y(34.4)}l7 -3v6zM${x(40.5)} ${y(34.4)}l-7 -3v6z`} class="arrow" />
+        <text x={x(21.75)} y={y(34.4) - 6} text-anchor="middle">37.5 u</text>
+
+        <path d={`M${x(43)} ${y(3)}H${x(47)}M${x(37)} ${y(29)}H${x(47)}M${x(45.8)} ${y(3)}V${y(29)}`} />
+        <path d={`M${x(45.8)} ${y(3)}l-3 7h6zM${x(45.8)} ${y(29)}l-3 -7h6z`} class="arrow" />
+        <text x={x(45.8) - 6} y={y(16)} text-anchor="middle" transform={`rotate(-90 ${x(45.8) - 6} ${y(16)})`}>26 u</text>
+
+        <text x={x(3) + 30} y={y(29) - 8}>65°</text>
+        <text x={x(15)} y={y(-3) - 2} text-anchor="middle">A</text>
+        <text x={x(34)} y={y(-3) - 2} text-anchor="middle">Y</text>
+      </g>
+
+      <!-- measuring crosshair (shown while inspecting) -->
+      <g class="probe" data-probe aria-hidden="true">
+        <path data-probe-v d={`M0 ${y(-3)}V${y(35)}`}></path>
+        <path data-probe-h d={`M${x(-3)} 0H${x(47)}`}></path>
+        <circle data-probe-dot r="9"></circle>
+      </g>
+
+      <!-- nodes -->
+      <g class="nodes">
+        {nodes.map((n) => <rect data-node={n.id} x={x(n.u) - 3} y={y(n.v) - 3} width="6" height="6" />)}
+      </g>
+    </svg>
+
+    <details class="nodes-data">
+      <summary>Construction data</summary>
+      <table>
+        <caption class="visually-hidden">Construction nodes of the AY monogram, in grid units; Y is the height above the baseline</caption>
+        <thead>
+          <tr><th scope="col">Node</th><th scope="col">Position</th><th scope="col" class="num">X</th><th scope="col" class="num">Y</th></tr>
+        </thead>
+        <tbody>
+          {nodes.map((n) => (
+            <tr><th scope="row">{n.id}</th><td>{n.name}</td><td class="num">{n.u.toFixed(1)}</td><td class="num">{(29 - n.v).toFixed(1)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+
+    <dl class="title-block">
+      <div>
+        <dt>Drawn</dt>
+        <dd>A. Yordanov</dd>
+      </div>
+      <div>
+        <dt>Grid</dt>
+        <dd>44 × 32 u</dd>
+      </div>
+      <div>
+        <dt>Date</dt>
+        <dd>{buildInfo.date}</dd>
+      </div>
+      <div>
+        <dt>Rev</dt>
+        <dd>{buildInfo.rev || '—'}</dd>
+      </div>
+    </dl>
+  </figure>
+</drawing-sheet>
+
+<script>
+  interface SheetNode {
+    id: string;
+    u: number;
+    v: number;
+    name: string;
+  }
+
+  class DrawingSheet extends HTMLElement {
+    connectedCallback() {
+      const svg = this.querySelector<SVGSVGElement>('svg.drawing');
+      const sheet = this.querySelector<HTMLElement>('.sheet');
+      const readout = this.querySelector<HTMLElement>('[data-readout]');
+      const probe = this.querySelector<SVGGElement>('[data-probe]');
+      const lineV = this.querySelector<SVGPathElement>('[data-probe-v]');
+      const lineH = this.querySelector<SVGPathElement>('[data-probe-h]');
+      const dot = this.querySelector<SVGCircleElement>('[data-probe-dot]');
+      if (!svg || !sheet || !readout || !probe || !lineV || !lineH || !dot) return;
+
+      const U = Number(this.dataset.u);
+      const ox = Number(this.dataset.ox);
+      const oy = Number(this.dataset.oy);
+      const W = Number(this.dataset.w);
+      const H = Number(this.dataset.h);
+      const nodes: SheetNode[] = JSON.parse(this.dataset.nodes ?? '[]');
+      const idle = readout.dataset.idle ?? '';
+      const calm = matchMedia('(prefers-reduced-motion: reduce)');
+      const fmt = (n: number) => n.toFixed(1).padStart(4, String.fromCharCode(0x2007));
+      let frame = 0;
+
+      const leave = () => {
+        this.classList.remove('is-inspecting');
+        probe.classList.remove('is-snapped');
+        this.querySelectorAll('.is-hit').forEach((el) => el.classList.remove('is-hit'));
+        readout.textContent = idle;
+        sheet.style.setProperty('--ry', '0deg');
+        sheet.style.setProperty('--rx', '0deg');
+      };
+
+      const inspect = (clientX: number, clientY: number) => {
+        const r = svg.getBoundingClientRect();
+        const px = ((clientX - r.left) / r.width) * W;
+        const py = ((clientY - r.top) / r.height) * H;
+        let u = (px - ox) / U;
+        let v = (py - oy) / U;
+        if (u < -3 || u > 47 || v < -3 || v > 35) {
+          leave();
+          return;
+        }
+
+        // Snap to the nearest construction node within 2.5 units.
+        let hit: SheetNode | undefined;
+        let best = 2.5;
+        for (const n of nodes) {
+          const d = Math.hypot(n.u - u, n.v - v);
+          if (d < best) {
+            best = d;
+            hit = n;
+          }
+        }
+        if (hit) {
+          u = hit.u;
+          v = hit.v;
+        }
+        const sx = ox + u * U;
+        const sy = oy + v * U;
+        lineV.setAttribute('transform', `translate(${sx} 0)`);
+        lineH.setAttribute('transform', `translate(0 ${sy})`);
+        dot.setAttribute('cx', String(sx));
+        dot.setAttribute('cy', String(sy));
+        probe.classList.toggle('is-snapped', !!hit);
+        this.querySelectorAll('[data-node]').forEach((el) =>
+          el.classList.toggle('is-hit', el.getAttribute('data-node') === hit?.id),
+        );
+        this.classList.add('is-inspecting');
+        // v runs downwards in the drawing; report height above the baseline instead.
+        readout.textContent = `${hit ? `${hit.id} ${hit.name}  ` : ''}X ${fmt(u)}  Y ${fmt(29 - v)} u`;
+
+        if (!calm.matches) {
+          const tx = (clientX - r.left) / r.width - 0.5;
+          const ty = (clientY - r.top) / r.height - 0.5;
+          sheet.style.setProperty('--ry', `${(tx * 5).toFixed(2)}deg`);
+          sheet.style.setProperty('--rx', `${(-ty * 4).toFixed(2)}deg`);
+        }
+      };
+
+      const onMove = (e: PointerEvent) => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => inspect(e.clientX, e.clientY));
+      };
+      svg.addEventListener('pointermove', onMove);
+      svg.addEventListener('pointerdown', onMove);
+      svg.addEventListener('pointerleave', (e) => {
+        if (e.pointerType === 'mouse') leave();
+      });
+      this.classList.add('is-live');
+    }
+  }
+  customElements.define('drawing-sheet', DrawingSheet);
+</script>
+
+<style>
+  drawing-sheet {
+    display: block;
+    perspective: 1100px;
+  }
+  .sheet {
+    margin: 0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 420ms var(--ease-out);
+  }
+  drawing-sheet:global(.is-inspecting) .sheet {
+    transition-duration: 90ms;
+  }
+  .sheet-head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-2xs);
+    white-space: nowrap;
+  }
+  .readout {
+    display: none;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: pre;
+    font-variant-numeric: tabular-nums;
+  }
+  drawing-sheet:global(.is-inspecting) .readout {
+    color: var(--text);
+    flex: 1;
+    text-align: right;
+  }
+  drawing-sheet:global(.is-inspecting) .sheet-head span:last-child {
+    display: none;
+  }
+  .drawing {
+    width: 100%;
+    height: auto;
+    display: block;
+    touch-action: pan-y;
+  }
+  drawing-sheet:global(.is-live) .drawing {
+    cursor: crosshair;
+  }
+  .grid path {
+    stroke: var(--grid-line);
+    stroke-width: 1;
+  }
+  .construct path {
+    stroke: var(--border-strong);
+    stroke-width: 0.75;
+    stroke-dasharray: 10 4 2 4;
+    fill: none;
+    opacity: 0.8;
+  }
+  .mark path {
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 2.6;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+    stroke-miterlimit: 8;
+  }
+  .nodes rect {
+    fill: var(--surface);
+    stroke: var(--text-2);
+    stroke-width: 1;
+    transition:
+      fill var(--t-feedback) ease,
+      stroke var(--t-feedback) ease;
+  }
+  .nodes rect:global(.is-hit) {
+    fill: var(--text);
+    stroke: var(--text);
+  }
+  .probe {
+    opacity: 0;
+    transition: opacity var(--t-feedback) ease;
+    pointer-events: none;
+  }
+  drawing-sheet:global(.is-inspecting) .probe {
+    opacity: 1;
+  }
+  .probe path {
+    stroke: var(--text-2);
+    stroke-width: 0.75;
+    stroke-dasharray: 3 3;
+    fill: none;
+  }
+  .probe circle {
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 1;
+    opacity: 0;
+  }
+  .probe:global(.is-snapped) circle {
+    opacity: 1;
+  }
+  .dim path {
+    stroke: var(--text-3);
+    stroke-width: 1;
+    fill: none;
+  }
+  .dim .arrow {
+    fill: var(--text-3);
+    stroke: none;
+  }
+  .dim text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    fill: var(--text-2);
+    letter-spacing: 0.04em;
+  }
+  .nodes-data {
+    border-top: 1px solid var(--border);
+    font-size: var(--text-xs);
+  }
+  .nodes-data summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 var(--s-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .nodes-data table {
+    font-size: var(--text-xs);
+    border-top: 1px solid var(--border);
+  }
+  .nodes-data th,
+  .nodes-data td {
+    padding: var(--s-2) var(--s-4);
+  }
+  .title-block {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+  .title-block > div {
+    padding: var(--s-2) var(--s-3) var(--s-3);
+    min-width: 0;
+  }
+  .title-block > div + div {
+    border-left: 1px solid var(--border);
+  }
+  .title-block dt {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .title-block dd {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  @media (max-width: 29.99em) {
+    .title-block {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .title-block > div:nth-child(3) {
+      border-left: 0;
+    }
+    .title-block > div:nth-child(n + 3) {
+      border-top: 1px solid var(--border);
+    }
+  }
+
+  /* Draw-in: the mark is plotted once, like a pen plotter. */
+  @media (prefers-reduced-motion: no-preference) {
+    .mark path {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: plot 900ms var(--ease-in-out) forwards;
+    }
+    .mark path:nth-child(1) {
+      animation-delay: 250ms;
+    }
+    .mark path:nth-child(2) {
+      animation-delay: 900ms;
+      animation-duration: 300ms;
+    }
+    .mark path:nth-child(3) {
+      animation-delay: 650ms;
+    }
+    .mark path:nth-child(4) {
+      animation-delay: 1250ms;
+      animation-duration: 400ms;
+    }
+    .nodes,
+    .dim {
+      opacity: 0;
+      animation: fade 500ms ease 1500ms forwards;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sheet {
+      transform: none;
+      transition: none;
+    }
+  }
+  @keyframes plot {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes fade {
+    to {
+      opacity: 1;
+    }
+  }
+  @media (min-width: 30em) {
+    .readout {
+      display: inline;
+    }
+  }
+</style>

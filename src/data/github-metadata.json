@@ -1,0 +1,71 @@
+{
+  "fetchedAt": "2026-11-25T13:02:59.395Z",
+  "repos": {
+    "Hyp3rAlex/longisafe-lab": {
+      "fullName": "Hyp3rAlex/longisafe-lab",
+      "url": "https://github.com/Hyp3rAlex/longisafe-lab",
+      "description": "Excel/VBA and Python tool for scenario-based validation of vehicle longitudinal dynamics, regenerative braking, and fault detection.",
+      "language": "Python",
+      "defaultBranch": "main",
+      "pushedAt": "2026-11-13T13:19:55Z",
+      "license": null,
+      "archived": false,
+      "etag": "W/\"2c0afbdea848e4f54cfe7c28e3e8da6b34a91536eb88e52dc4e47377d24311ae\""
+    },
+    "Hyp3rAlex/demographics-service": {
+      "fullName": "Hyp3rAlex/demographics-service",
+      "url": "https://github.com/Hyp3rAlex/demographics-service",
+      "description": "Spring Boot backend service for automated retrieval, aggregation, persistence, and exposure of demographic population data using ArcGIS REST services and PostgreSQL. Containerized with Docker.",
+      "language": "Java",
+      "defaultBranch": "main",
+      "pushedAt": "2026-01-24T04:02:06Z",
+      "license": null,
+      "archived": false,
+      "etag": "W/\"206be7217723cfa01ed009f6f0b615ba1ceaf34c01c23fb9d5af80593073968e\""
+    },
+    "Hyp3rAlex/infraflow-mission-control": {
+      "fullName": "Hyp3rAlex/infraflow-mission-control",
+      "url": "https://github.com/Hyp3rAlex/infraflow-mission-control",
+      "description": "Synthetic enterprise IT infrastructure demand-management and reporting demonstrator: Jira and Confluence workflow, Python validation, finance and capacity analysis, Excel and PowerPoint management reporting (fictional data).",
+      "language": "Python",
+      "defaultBranch": "main",
+      "pushedAt": "2026-11-19T00:26:21Z",
+      "license": "MIT",
+      "archived": false,
+      "etag": "W/\"6290d11365f10e7e530ab675cab4fe0569f67b5ae529e73b2e75024345a06f92\""
+    },
+    "Hyp3rAlex/LeetCode-Problem-Solutions": {
+      "fullName": "Hyp3rAlex/LeetCode-Problem-Solutions",
+      "url": "https://github.com/Hyp3rAlex/LeetCode-Problem-Solutions",
+      "description": "This repository serves as a sign of my commitment to level up my coding skills by solving LeetCode problems.",
+      "language": "JavaScript",
+      "defaultBranch": "main",
+      "pushedAt": "2025-12-01T23:14:28Z",
+      "license": null,
+      "archived": false,
+      "etag": "W/\"80c861bc97f4e40d5978a0e511562d87a5e0218d00dbff4d9b84790ecb3755d3\""
+    },
+    "Hyp3rAlex/neetcode-submissions": {
+      "fullName": "Hyp3rAlex/neetcode-submissions",
+      "url": "https://github.com/Hyp3rAlex/neetcode-submissions",
+      "description": "My NeetCode.io problem submissions",
+      "language": null,
+      "defaultBranch": "main",
+      "pushedAt": "2026-05-13T17:42:40Z",
+      "license": null,
+      "archived": false,
+      "etag": "W/\"5561551b173abb2c4736c74447391ec30f0b629f157706edb7e8260746552c67\""
+    },
+    "Hyp3rAlex/Hyp3rAlex": {
+      "fullName": "Hyp3rAlex/Hyp3rAlex",
+      "url": "https://github.com/Hyp3rAlex/Hyp3rAlex",
+      "description": "Hello everybody, this is my profile",
+      "language": null,
+      "defaultBranch": "main",
+      "pushedAt": "2026-10-21T17:19:11Z",
+      "license": null,
+      "archived": false,
+      "etag": "W/\"f0ac32f668be456741707132a10333d22f62e51d208808c01cc776d8abae53df\""
+    }
+  }
+}

@@ -1,0 +1,35 @@
+---
+/**
+ * Original angular AY monogram. Geometry lives on a 44×32 grid:
+ * the A is an open chevron with a slanted tick for the crossbar, and the
+ * Y's left arm runs parallel to the A's right leg (same 65° slope: 12 units of run per 26 of rise).
+ */
+interface Props {
+  size?: number;
+  title?: string;
+  class?: string;
+}
+const { size = 28, title, class: cls } = Astro.props;
+const h = Math.round((size * 32) / 44);
+---
+
+<svg
+  class:list={['ay-mark', cls]}
+  width={size}
+  height={h}
+  viewBox="0 0 44 32"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="3.6"
+  stroke-linecap="square"
+  stroke-linejoin="miter"
+  stroke-miterlimit="8"
+  role={title ? 'img' : undefined}
+  aria-label={title}
+  aria-hidden={title ? undefined : 'true'}
+>
+  <path d="M3 29 15 3 27 29" />
+  <path d="M11.5 21h7" />
+  <path d="M27.5 3 34 17l6.5-14" />
+  <path d="M34 17v12" />
+</svg>

@@ -1,0 +1,1044 @@
+---
+/**
+ * Tacto Negotiation Arena demo: (a) step-through replay of the S01 simulator re-run, (b) guard sandbox on a
+ * synthetic case. Logic: src/lib/tacto.ts. Data: src/data/demo/tacto.json.
+ * Every replay step and the sandbox's default state are server-rendered; JavaScript only switches the
+ * visible step and re-runs the guard re-implementation when a control changes.
+ */
+import data from '../../data/demo/tacto.json';
+import {
+  CHECK_LABELS,
+  FIELD_LABELS,
+  TAG_LABELS,
+  acceptPoint,
+  checksHtml,
+  guardDecide,
+  outcomeHtml,
+  outcomeSummary,
+  priceSeries,
+  stateAt,
+  type GuardCase,
+  type ReplayEvent,
+  type ReplayRun,
+  type ThreadState,
+} from '../../lib/tacto';
+
+const run = data.run as unknown as ReplayRun;
+const events = run.events;
+const N = events.length;
+const pts = priceSeries(run);
+const sup = pts.filter((p) => p.actor === 'supplier');
+const buy = pts.filter((p) => p.actor === 'buyer');
+const acc = acceptPoint(run)!;
+const rounds = Math.max(...pts.map((p) => p.round));
+const LO = 13.5;
+const HI = 18;
+const x = (r: number) => 4 + (r / rounds) * 80;
+const y = (p: number) => ((HI - p) / (HI - LO)) * 100;
+const line = (s: typeof pts) => s.map((p) => `${x(p.round).toFixed(2)},${y(p.price).toFixed(2)}`).join(' ');
+const current = data.run.buyer.current_unit_price;
+const stdPay = data.run.standardTerms.payment_days;
+
+const money = (n: number | null) => (n === null ? 'n/a' : n.toLocaleString('en-GB', { maximumFractionDigits: 0 }));
+const price = (n: number | null) => (n === null ? '–' : n.toFixed(2));
+const DECISIONS: Record<string, string> = { counter: 'counter-offer', accept: 'accept', walk_away: 'walk away', message: 'text-only message' };
+const STATUS: Record<string, string> = { open: 'open', final_offer: 'final offer', agreed: 'agreed', walked_away: 'walked away' };
+const who = (e: ReplayEvent) => (e.actor === 'supplier' ? 'Supplier' : 'Buyer agent');
+const action = (e: ReplayEvent) => (e.actor === 'supplier' ? `status: ${STATUS[e.status ?? ''] ?? e.status}` : (DECISIONS[e.decision ?? ''] ?? e.decision));
+const say = (e: ReplayEvent) => {
+  const p = e.termSheets[0]?.terms.unit_price;
+  if (e.actor === 'supplier') return `Step ${e.step} of ${N}, round ${e.round}: supplier quotes ${price(p as number)}, status ${STATUS[e.status ?? '']}.`;
+  if (e.decision === 'accept') return `Step ${e.step} of ${N}, round ${e.round}: buyer agent accepts the standing sheet at ${price(acc.price)}. Deal.`;
+  return `Step ${e.step} of ${N}, round ${e.round}: buyer agent sends a counter-offer at ${price(p as number)}.`;
+};
+const first = stateAt(run, 1);
+
+/* ---- sandbox default state ---- */
+const g = data.guardCase;
+const gc = g as unknown as GuardCase;
+const d = g.defaults;
+const sheetKey = d.supplierSheet as keyof typeof g.supplierSheets;
+const thread: ThreadState = {
+  supplierId: g.supplierId,
+  opening: g.supplierSheets[sheetKey].opening,
+  standing: g.supplierSheets[sheetKey].standing,
+  standingId: 'offer:SYN-s',
+  status: 'open',
+  buyerMessagesSent: g.roundLimit - d.movesLeft,
+  guardCountersUsed: d.guardCountersUsed,
+};
+const outcome = guardDecide(gc, thread, { type: 'counter', sheets: [d.draft] });
+const sandboxConfig = JSON.stringify(g);
+const OPS: Record<string, string> = { '<=': 'at most', '>=': 'at least' };
+const UNIT: Record<string, string> = { lead_time_days: 'days', payment_days: 'days', defect_ppm: 'ppm' };
+const mustText = g.mustHaves.map((m) => `${FIELD_LABELS[m.field]?.toLowerCase() ?? m.field} ${OPS[m.op] ?? m.op} ${m.value} ${UNIT[m.field] ?? ''}`.trim());
+---
+
+<tacto-demo class="demo" data-steps={N} data-case={sandboxConfig}>
+  <div class="demo-bar">
+    <span>Negotiation replay and guard sandbox</span>
+    <span class="tq-badges"><span class="badge">Simulator re-run</span> <span class="badge">Synthetic case</span></span>
+  </div>
+  <p class="tq-disclaimer">
+    Not a recording from the hackathon arena. Part A replays an offline re-run against the starter kit’s scripted supplier; part B runs a browser re-implementation
+    of the guard on an invented case. Scores are simulator scores, not performance claims.
+  </p>
+
+  <section aria-labelledby="tq-a">
+    <h3 class="tq-h" id="tq-a"><span class="mono">A</span> <span>Replay: sample case S01, my <code>final</code> agent against the scripted supplier</span></h3>
+    <p class="tq-case">
+      A real run of the agent, recorded for this page. The sample case has no must-haves, so every check in this replay is valid; part B opens on a draft that breaks
+      three.
+    </p>
+    <div class="demo-controls">
+      <div class="tq-btns">
+        <button type="button" class="btn" data-act="prev" disabled>← Prev</button>
+        <button type="button" class="btn" data-act="next" data-js disabled>Next →</button>
+        <button type="button" class="btn" data-act="play" aria-pressed="false" hidden>Play replay</button>
+        <button type="button" class="btn btn--ghost" data-act="reset" data-js disabled>Reset replay</button>
+      </div>
+      <div class="field tq-range">
+        <label for="tq-step">Step <output data-out="stepno">1</output> of {N}</label>
+        <input id="tq-step" type="range" min="1" max={N} step="1" value="1" data-js disabled />
+      </div>
+    </div>
+
+    <div class="demo-stage tq-stage">
+      <div class="tq-chart">
+        <p class="tq-legend" aria-hidden="true">
+          <span><i class="tq-pt tq-pt-s"></i> supplier (square, dashed line)</span>
+          <span><i class="tq-pt tq-pt-b"></i> buyer agent (circle, solid line)</span>
+          <span><i class="tq-pt tq-acc"></i> accept</span>
+        </p>
+        <div
+          class="tq-plot"
+          role="img"
+          aria-label={`Unit price per round. Supplier: ${sup.map((p) => p.price.toFixed(2)).join(', ')}. Buyer agent: ${buy.map((p) => p.price.toFixed(2)).join(', ')}. Accept at ${acc.price.toFixed(2)} in round ${acc.round}. The table below the chart lists every step.`}
+        >
+          {
+            [14, 15, 16, 17, 18].map((v) => (
+              <span class="tq-ytick" style={`top:${y(v)}%`}>
+                {v}
+              </span>
+            ))
+          }
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false" aria-hidden="true">
+            {[14, 15, 16, 17].map((v) => <line class="tq-grid" x1="0" x2="100" y1={y(v)} y2={y(v)} />)}
+            <line class="tq-ref" x1="0" x2="100" y1={y(current)} y2={y(current)}></line>
+            <polyline class="tq-ln tq-ln-s" points={line(sup)}></polyline>
+            <polyline class="tq-ln tq-ln-b" points={line(buy)}></polyline>
+          </svg>
+          <span class="tq-reflabel" style={`top:${y(current)}%`}>price paid today {current.toFixed(2)}</span>
+          {sup.map((p) => <i class="tq-pt tq-pt-s" data-step={p.step} style={`left:${x(p.round)}%;top:${y(p.price)}%`} />)}
+          {buy.map((p) => <i class="tq-pt tq-pt-b" data-step={p.step} style={`left:${x(p.round)}%;top:${y(p.price)}%`} />)}
+          <i class="tq-pt tq-acc" data-step={acc.step} style={`left:${x(acc.round)}%;top:${y(acc.price)}%`}></i>
+          <span class="tq-acclabel" data-step={acc.step} style={`left:${x(acc.round)}%;top:${y(acc.price)}%`}>accept<br />{acc.price.toFixed(2)}</span>
+          {
+            Array.from({ length: rounds + 1 }, (_, r) => (
+              <span class="tq-xtick" style={`left:${x(r)}%`}>
+                {r}
+              </span>
+            ))
+          }
+        </div>
+        <p class="tq-axis" aria-hidden="true">round · unit price in EUR</p>
+      </div>
+
+      <div class="tq-steps">
+        {
+          events.map((e) => {
+            const st = stateAt(run, e.step);
+            return (
+              <article
+                class="tq-step"
+                data-step={e.step}
+                data-say={say(e)}
+                data-round={st.round}
+                data-sup={price(st.supplierPrice)}
+                data-buy={price(st.buyerPrice)}
+                data-gap={price(st.gap)}
+                data-score={st.standingScore === null ? '–' : st.standingScore.toFixed(2)}
+                hidden={e.step !== 1}
+              >
+                <p class="tq-stephead">
+                  <span class="mono">
+                    Step {e.step}/{N} · round {e.round}
+                  </span>
+                  <span class="tag tag--solid" data-actor={e.actor}>
+                    {who(e)}
+                  </span>
+                </p>
+                <p class="tq-action">
+                  {e.actor === 'supplier' ? 'Supplier status' : 'Decision'}: <strong>{e.actor === 'supplier' ? STATUS[e.status ?? ''] : DECISIONS[e.decision ?? '']}</strong>
+                  {e.decision === 'accept' && (
+                    <>
+                      {' '}
+                      of sheet <code>{e.acceptedTermSheetId}</code> at {price(acc.price)} EUR
+                    </>
+                  )}
+                </p>
+                {e.text && <p class="tq-msg">“{e.text}”</p>}
+                {e.termSheets.map((s, i) => (
+                  <div class="tq-sheetbox">
+                    <p class="mono">
+                      {e.actor === 'supplier' ? `Term sheet ${s.termSheetId}` : `Proposed sheet ${i + 1} of ${e.termSheets.length}`}
+                    </p>
+                    <dl>
+                      <div>
+                        <dt>Unit price</dt>
+                        <dd>{price(s.terms.unit_price as number)} EUR</dd>
+                      </div>
+                      <div>
+                        <dt>Payment term</dt>
+                        <dd>{s.terms.payment_days ?? stdPay} days{s.terms.payment_days === undefined && <span class="tq-dim"> (supplier standard)</span>}</dd>
+                      </div>
+                      <div>
+                        <dt>Total cost C</dt>
+                        <dd>{money(s.costEur)} EUR</dd>
+                      </div>
+                      <div>
+                        <dt>Score if accepted</dt>
+                        <dd>{e.actor === 'supplier' && s.scoreIfAccepted !== null ? s.scoreIfAccepted.toFixed(2) : <span class="tq-dim">n/a (own proposal)</span>}</dd>
+                      </div>
+                    </dl>
+                    <ul class="tq-checks" role="list">
+                      {s.checks.map((c) => (
+                        <li>
+                          <span class="verdict" data-state={c.ok ? 'pass' : 'fail'}>
+                            <span aria-hidden="true">{c.ok ? '✓' : '✕'}</span> {c.ok ? 'valid' : 'invalid'}
+                          </span>{' '}
+                          {CHECK_LABELS[c.check] ?? c.check}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                {e.actor === 'buyer' && (
+                  <div class="tq-why">
+                    <p class="mono">Why (annotation, derived after the run)</p>
+                    <ul class="tags">
+                      {(e.rationale ?? []).map((t) => (
+                        <li class="tag" data-source={t.source}>
+                          {TAG_LABELS[t.tag] ?? t.tag}
+                        </li>
+                      ))}
+                    </ul>
+                    <p class="mono tq-guardline">
+                      Guard log: {(e.guardLog ?? []).length > 0 ? (e.guardLog ?? []).join(' · ') : 'no line emitted, decision passed through unchanged'}
+                    </p>
+                  </div>
+                )}
+                {e.actor === 'supplier' && e.step === 1 && (
+                  <p class="tq-note">The simulator’s supplier is a fixed script: it opens 10% above the current price and concedes 2% of its opening per message, with a final offer in round 5.</p>
+                )}
+              </article>
+            );
+          })
+        }
+      </div>
+    </div>
+
+    <dl class="demo-readout">
+      <div>
+        <dt>Round</dt>
+        <dd data-out="round">{first.round}</dd>
+      </div>
+      <div>
+        <dt>Supplier price, EUR</dt>
+        <dd data-out="sup">{price(first.supplierPrice)}</dd>
+      </div>
+      <div>
+        <dt>Buyer price, EUR</dt>
+        <dd data-out="buy">{price(first.buyerPrice)}</dd>
+      </div>
+      <div>
+        <dt>Gap, EUR</dt>
+        <dd data-out="gap">{price(first.gap)}</dd>
+      </div>
+      <div>
+        <dt>Simulator score of standing sheet</dt>
+        <dd data-out="score">{first.standingScore?.toFixed(2)}</dd>
+      </div>
+    </dl>
+    <p class="tq-status" role="status" data-out="say">{say(events[0]!)}</p>
+
+    <details>
+      <summary>All {N} steps as a table</summary>
+      <div class="table-scroll" tabindex="0" role="group" aria-label="Replay steps">
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>Round</th>
+              <th>Actor</th>
+              <th>Action</th>
+              <th class="num">Unit price</th>
+              <th class="num">Payment days</th>
+              <th class="num">Total cost C</th>
+              <th class="num">Score if accepted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              events.flatMap((e) =>
+                (e.termSheets.length > 0 ? e.termSheets : [null]).map((s) => (
+                  <tr>
+                    <td>{e.step}</td>
+                    <td>{e.round}</td>
+                    <td>{who(e)}</td>
+                    <td>{action(e)}</td>
+                    <td class="num">{s ? price(s.terms.unit_price as number) : price(acc.price)}</td>
+                    <td class="num">{s ? (s.terms.payment_days ?? `${stdPay}*`) : `${stdPay}*`}</td>
+                    <td class="num">{s ? money(s.costEur) : money(acc.sheet.costEur)}</td>
+                    <td class="num">{s && e.actor === 'supplier' ? s.scoreIfAccepted?.toFixed(2) : s ? '–' : run.result.score.toFixed(2)}</td>
+                  </tr>
+                )),
+              )
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="tq-tablenote">* supplier’s standard payment term, read from its quote. Score = (C_open − C) / (C_open − C_best) with the simulator’s own C_open and C_best.</p>
+    </details>
+  </section>
+
+  <section aria-labelledby="tq-b" class="tq-sandbox">
+    <h3 class="tq-h" id="tq-b"><span class="mono">B</span> <span>Guard sandbox: what the guard does with a delegate’s decision</span></h3>
+    <p class="tq-case">
+      <span class="tag">Synthetic case</span> One supplier, a machined bracket. Must-haves: {mustText.join('; ')}. The buyer’s alternative costs {g.alternative.unit_price.toFixed(2)} EUR per unit. The
+      starting draft below breaks all three must-haves; the right-hand panel shows what the guard sends instead.
+    </p>
+    <div class="demo-controls tq-form">
+      <fieldset>
+        <legend>Delegate agent’s decision</legend>
+        <div class="tq-fields">
+          <div class="field">
+            <label for="tq-del">Decision</label>
+            <select id="tq-del" data-js disabled data-in="delegate">
+              <option value="counter" selected>Counter-offer (draft sheet)</option>
+              <option value="accept">Accept the standing sheet</option>
+              <option value="walk_away">Walk away</option>
+              <option value="crash">Crash (exception)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tq-price">Unit price, EUR</label>
+            <input id="tq-price" data-js disabled data-in="unit_price" data-draft type="number" min="15" max="30" step="0.05" value={d.draft.unit_price} inputmode="decimal" aria-describedby="tq-price-hint" />
+            <small class="tq-hint" id="tq-price-hint">15.00 to 30.00 EUR</small>
+          </div>
+          <div class="field">
+            <label for="tq-lead">Lead time, days</label>
+            <input id="tq-lead" data-js disabled data-in="lead_time_days" data-draft type="number" min="14" max="60" step="1" value={d.draft.lead_time_days} inputmode="numeric" aria-describedby="tq-lead-hint" />
+            <small class="tq-hint" id="tq-lead-hint">14 to 60 days, whole days</small>
+          </div>
+          <div class="field">
+            <label for="tq-pay">Payment term, days</label>
+            <select id="tq-pay" data-js disabled data-in="payment_days" data-draft>
+              {g.termOptions.payment_days.map((o) => <option value={o} selected={o === d.draft.payment_days}>{o}</option>)}
+            </select>
+          </div>
+          <div class="field">
+            <label for="tq-ppm">Defect rate, ppm</label>
+            <select id="tq-ppm" data-js disabled data-in="defect_ppm" data-draft>
+              {g.termOptions.defect_ppm.map((o) => <option value={o} selected={o === d.draft.defect_ppm}>{o}</option>)}
+            </select>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Thread state</legend>
+        <div class="tq-fields">
+          <div class="field">
+            <label for="tq-sup">Supplier’s standing sheet</label>
+            <select id="tq-sup" data-js disabled data-in="supplierSheet">
+              {
+                Object.entries(g.supplierSheets).map(([k, v]) => (
+                  <option value={k} selected={k === d.supplierSheet}>
+                    {v.label} ({v.standing.unit_price.toFixed(2)})
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+          <div class="field">
+            <label for="tq-status">Supplier status</label>
+            <select id="tq-status" data-js disabled data-in="status">
+              <option value="open" selected>open</option>
+              <option value="final_offer">final offer</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tq-left">Our messages left</label>
+            <select id="tq-left" data-js disabled data-in="movesLeft">
+              <option value="10">10 (we have not written yet)</option>
+              <option value="6" selected>6</option>
+              <option value="1">1 (last message)</option>
+              <option value="0">0</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tq-used">Guard counters already sent</label>
+            <select id="tq-used" data-js disabled data-in="guardCountersUsed">
+              <option value="0" selected>0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn--ghost" data-act="reset-guard" data-js disabled>Reset sandbox</button>
+        </div>
+      </fieldset>
+    </div>
+    <p class="tq-err" role="status" data-out="guarderr"></p>
+    <div class="demo-stage tq-guard">
+      <div>
+        <p class="mono" data-out="checktitle">Draft sheet against the must-haves</p>
+        <ul class="tq-mh" role="list" data-out="checks" set:html={checksHtml(gc, d.draft)} />
+        <p class="tq-note">Lead time is free text here on purpose: the arena only allows {g.termOptions.lead_time_days.join(', ')} days, and the kit snaps a value to the nearest option before it is sent.</p>
+      </div>
+      <div>
+        <p class="mono">What the guard returns</p>
+        <div class="tq-outcome" data-out="outcome" set:html={outcomeHtml(gc, outcome, [d.draft])} />
+      </div>
+    </div>
+    <p class="visually-hidden" role="status" data-out="guardsay">{outcomeSummary(outcome)}</p>
+  </section>
+
+  <p class="demo-foot">
+    Part A: deterministic offline re-run of the repository’s <code>final</code> agent chain against the starter kit’s local simulator on its sample case S01, recorded
+    for this page on 25 Nov 2026 at revision <code>{data.provenance.replay.sourceCommit}</code>; costs, checks and scores were computed by the repository’s own
+    functions. “Why” tags are annotations added afterwards; the guard logged nothing in this run. Part B: TypeScript re-implementation of the rules in
+    <code>agent/arena_kit/guard.py</code> for a single thread, with a simplified two-term cost model, on a hand-written synthetic case. Log lines use the wording of
+    <code>guard.py</code>, and the port is tested against outputs of the original Python on the same synthetic inputs. The starter kit, including case S01 and its simulator, is stated by the repository to be MIT-licensed. No network requests.
+  </p>
+</tacto-demo>
+
+<style is:global>
+  tacto-demo {
+    display: block;
+  }
+  tacto-demo .tq-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+  tacto-demo .tq-disclaimer {
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  tacto-demo .tq-h {
+    display: flex;
+    gap: var(--s-3);
+    align-items: baseline;
+    margin: 0;
+    padding: var(--s-4) var(--s-4) var(--s-3);
+    font-size: var(--text-md);
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+  tacto-demo .tq-h .mono {
+    flex: none;
+    padding: 0 0.45em;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-1);
+    color: var(--text);
+  }
+  tacto-demo .tq-sandbox {
+    border-top: 1px solid var(--border-strong);
+  }
+  tacto-demo .tq-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+  tacto-demo .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  tacto-demo .btn[aria-pressed='true'] {
+    --btn-bg: var(--raised);
+    --btn-bd: var(--text);
+  }
+  tacto-demo .tq-range {
+    flex: 1 1 14rem;
+  }
+  tacto-demo .tq-range output {
+    color: var(--text);
+  }
+  tacto-demo .tq-stage {
+    display: grid;
+    gap: var(--s-5);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  @media (min-width: 60em) {
+    tacto-demo .tq-stage {
+      grid-template-columns: minmax(0, 11fr) minmax(0, 10fr);
+    }
+  }
+  tacto-demo .tq-chart {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-3);
+  }
+  tacto-demo .tq-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-4);
+    color: var(--text-2);
+  }
+  tacto-demo .tq-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+  tacto-demo .tq-legend .tq-pt {
+    position: static;
+    transform: none;
+  }
+  tacto-demo .tq-plot {
+    position: relative;
+    height: clamp(11.5rem, 42vw, 19rem);
+    margin: var(--s-4) 0 1.6rem 2rem;
+    border-left: 1px solid var(--border-strong);
+    border-bottom: 1px solid var(--border-strong);
+  }
+  tacto-demo .tq-plot svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  tacto-demo .tq-grid {
+    stroke: var(--grid-line);
+    vector-effect: non-scaling-stroke;
+  }
+  tacto-demo .tq-ref {
+    stroke: var(--text-3);
+    stroke-dasharray: 2 4;
+    vector-effect: non-scaling-stroke;
+  }
+  tacto-demo .tq-ln {
+    fill: none;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+  }
+  tacto-demo .tq-ln-s {
+    stroke: var(--info);
+    stroke-dasharray: 5 3;
+  }
+  tacto-demo .tq-ln-b {
+    stroke: var(--text);
+  }
+  tacto-demo .tq-pt {
+    position: absolute;
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    transform: translate(-50%, -50%);
+    flex: none;
+  }
+  tacto-demo .tq-pt-s {
+    background: var(--info);
+  }
+  tacto-demo .tq-pt-b {
+    background: var(--text);
+    border-radius: 50%;
+  }
+  tacto-demo .tq-acc {
+    width: 19px;
+    height: 19px;
+    border: 1.5px solid var(--ok);
+    border-radius: 50%;
+  }
+  tacto-demo .tq-legend .tq-acc {
+    width: 13px;
+    height: 13px;
+  }
+  tacto-demo .tq-pt.is-future,
+  tacto-demo .tq-acclabel.is-future {
+    opacity: 0.2;
+  }
+  tacto-demo .tq-acc.is-future,
+  tacto-demo .tq-acclabel.is-future {
+    visibility: hidden;
+  }
+  tacto-demo .tq-pt.is-current {
+    outline: 1.5px solid var(--text);
+    outline-offset: 4px;
+  }
+  tacto-demo .tq-acclabel {
+    position: absolute;
+    transform: translate(1.5em, 0.2em);
+    color: var(--ok);
+    line-height: 1.25;
+  }
+  tacto-demo .tq-reflabel {
+    position: absolute;
+    left: 0.6em;
+    transform: translateY(-135%);
+    white-space: nowrap;
+  }
+  tacto-demo .tq-ytick {
+    position: absolute;
+    right: 100%;
+    transform: translate(-0.5em, -50%);
+  }
+  tacto-demo .tq-xtick {
+    position: absolute;
+    top: 100%;
+    transform: translate(-50%, 0.4em);
+  }
+  tacto-demo .tq-axis {
+    text-align: right;
+  }
+  tacto-demo .tq-step {
+    display: grid;
+    gap: var(--s-3);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  tacto-demo .tq-step[hidden] {
+    display: none;
+  }
+  tacto-demo .tq-stephead {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-2);
+    padding-bottom: var(--s-2);
+    border-bottom: 1px solid var(--border);
+  }
+  tacto-demo .tag[data-actor='buyer'] {
+    color: var(--text);
+    border-color: var(--text-2);
+  }
+  tacto-demo .tag[data-actor='supplier'] {
+    color: var(--info);
+    border-color: var(--info);
+  }
+  tacto-demo .tq-action strong {
+    color: var(--text);
+  }
+  tacto-demo .tq-msg {
+    color: var(--text-3);
+    font-style: italic;
+  }
+  tacto-demo .tq-sheetbox {
+    display: grid;
+    gap: var(--s-2);
+    padding: var(--s-3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-2);
+    background: var(--bg);
+  }
+  tacto-demo .tq-sheetbox dl {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-2) var(--s-4);
+    margin: 0;
+  }
+  tacto-demo .tq-sheetbox dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  tacto-demo .tq-sheetbox dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+  tacto-demo .tq-checks,
+  tacto-demo .tq-mh {
+    display: grid;
+    gap: var(--s-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  tacto-demo .tq-checks li {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  tacto-demo .tq-why {
+    display: grid;
+    gap: var(--s-2);
+  }
+  tacto-demo .tq-why .tags {
+    padding: 0;
+  }
+  tacto-demo .tq-why .tags li {
+    margin: 0;
+    border-style: dashed;
+  }
+  tacto-demo .tq-guardline {
+    text-transform: none;
+    letter-spacing: 0.01em;
+  }
+  tacto-demo .tq-note,
+  tacto-demo .tq-tablenote {
+    font-size: var(--text-xs);
+    line-height: 1.55;
+    color: var(--text-3);
+  }
+  tacto-demo .tq-tablenote {
+    padding: var(--s-3) var(--s-4);
+  }
+  tacto-demo .tq-dim {
+    color: var(--text-3);
+  }
+  tacto-demo .tq-status {
+    padding: var(--s-3) var(--s-4);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-sm);
+    color: var(--text);
+  }
+  tacto-demo .demo-readout + .tq-status {
+    border-top: 0;
+  }
+  tacto-demo .tq-case {
+    padding: 0 var(--s-4) var(--s-4);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+  tacto-demo .tq-form {
+    display: grid;
+    gap: var(--s-4);
+    border-top: 1px solid var(--border);
+  }
+  tacto-demo .tq-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.25rem), 1fr));
+    gap: var(--s-3) var(--s-4);
+    align-items: end;
+    margin-top: var(--s-2);
+  }
+  @media (max-width: 40em) {
+    tacto-demo .tq-fields {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    tacto-demo .field:has(#tq-del),
+    tacto-demo .field:has(#tq-sup) {
+      grid-column: 1 / -1;
+    }
+  }
+  tacto-demo .tq-form label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  tacto-demo .tq-form legend {
+    color: var(--text);
+  }
+  tacto-demo .tq-form select,
+  tacto-demo .tq-form input[type='number'] {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 var(--s-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-2);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-sm);
+  }
+  tacto-demo .tq-hint {
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  tacto-demo .tq-form [aria-invalid='true'] {
+    border-color: var(--fail);
+    border-width: 2px;
+  }
+  tacto-demo .tq-err {
+    padding: 0 var(--s-4);
+    font-size: var(--text-sm);
+    color: var(--fail);
+  }
+  tacto-demo .tq-err:not(:empty) {
+    padding-block: var(--s-3);
+    border-bottom: 1px solid var(--border);
+  }
+  tacto-demo .tq-err:not(:empty)::before {
+    content: '✕ ';
+  }
+  @media print {
+    tacto-demo,
+    tacto-demo details .table-scroll,
+    tacto-demo .tq-log,
+    tacto-demo .tq-outcome {
+      overflow: visible;
+      max-height: none;
+    }
+    tacto-demo .tq-log {
+      white-space: pre-wrap;
+    }
+  }
+  tacto-demo .tq-form :disabled {
+    opacity: 0.45;
+  }
+  tacto-demo .tq-guard {
+    display: grid;
+    gap: var(--s-5);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  tacto-demo .tq-guard > div {
+    display: grid;
+    gap: var(--s-3);
+    min-width: 0;
+  }
+  @media (min-width: 60em) {
+    tacto-demo .tq-guard {
+      grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+    }
+  }
+  tacto-demo .tq-mh li {
+    display: grid;
+    grid-template-columns: 4.6rem minmax(0, 1fr);
+    gap: 0 var(--s-3);
+    margin: 0;
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
+  }
+  tacto-demo .tq-mh .tq-val {
+    grid-column: 2;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  tacto-demo .tq-outcome {
+    display: grid;
+    gap: var(--s-3);
+    padding: var(--s-4);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-2);
+    background: var(--bg);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+  }
+  tacto-demo .tq-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-2) var(--s-4);
+  }
+  tacto-demo .tq-head strong {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    color: var(--text);
+  }
+  tacto-demo .tq-sheet {
+    font-size: var(--text-sm);
+  }
+  tacto-demo .tq-sheet caption {
+    padding-bottom: var(--s-2);
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  tacto-demo .tq-sheet th,
+  tacto-demo .tq-sheet td {
+    padding: var(--s-2) var(--s-3) var(--s-2) 0;
+  }
+  tacto-demo .tq-sheet th {
+    width: 8.5rem;
+    font-weight: 400;
+    color: var(--text-2);
+  }
+  tacto-demo .tq-sheet td {
+    font-family: var(--font-mono);
+    color: var(--text);
+  }
+  tacto-demo .tq-chg {
+    margin-left: 0.5em;
+    color: var(--warn);
+    font-size: var(--text-xs);
+  }
+  tacto-demo .tq-loglabel {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  tacto-demo .tq-log {
+    margin: 0;
+    padding: var(--s-3);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border-radius: var(--r-2);
+    color: var(--text);
+  }
+</style>
+
+<script>
+  import { checksHtml, guardDecide, outcomeHtml, outcomeSummary, type Delegate, type GuardCase, type SupplierStatus, type Terms, type ThreadState } from '../../lib/tacto';
+
+  interface SandboxConfig extends GuardCase {
+    supplierId: string;
+    supplierSheets: Record<string, { opening: Terms; standing: Terms }>;
+  }
+
+  class TactoDemo extends HTMLElement {
+    private step = 1;
+    private total = 1;
+    private timer: number | undefined;
+    private config!: SandboxConfig;
+
+    connectedCallback() {
+      this.total = Number(this.dataset.steps ?? 1);
+      this.config = JSON.parse(this.dataset.case ?? '{}') as SandboxConfig;
+      const range = this.q<HTMLInputElement>('#tq-step');
+      range.addEventListener('input', () => {
+        this.stop();
+        this.go(Number(range.value));
+      });
+      this.addEventListener('click', (ev) => {
+        const act = (ev.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
+        if (act === 'prev') this.go(this.step - 1);
+        else if (act === 'next') this.go(this.step + 1);
+        else if (act === 'reset') this.go(1);
+        else if (act === 'play') this.togglePlay();
+        else if (act === 'reset-guard') this.resetGuard();
+        if (act && act !== 'play') this.stop();
+      });
+      // Auto-play is offered only when the visitor has not asked for reduced motion.
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) this.q<HTMLElement>('[data-act="play"]').hidden = false;
+      this.querySelectorAll<HTMLElement>('[data-in]').forEach((el) => {
+        el.addEventListener('input', () => this.runGuard());
+        el.addEventListener('change', () => this.runGuard());
+      });
+      // Controls are rendered disabled so they are never dead without JavaScript.
+      this.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('[data-js]').forEach((el) => (el.disabled = false));
+      this.go(1, false);
+    }
+
+    disconnectedCallback() {
+      this.stop();
+    }
+
+    private q<T extends Element>(sel: string): T {
+      return this.querySelector<T>(sel)!;
+    }
+    private out(name: string): HTMLElement {
+      return this.q<HTMLElement>(`[data-out="${name}"]`);
+    }
+
+    private go(n: number, announce = true) {
+      this.step = Math.min(this.total, Math.max(1, n));
+      let card: HTMLElement | undefined;
+      this.querySelectorAll<HTMLElement>('.tq-step').forEach((el) => {
+        const on = Number(el.dataset.step) === this.step;
+        el.hidden = !on;
+        if (on) card = el;
+      });
+      this.querySelectorAll<HTMLElement>('.tq-plot [data-step]').forEach((el) => {
+        const s = Number(el.dataset.step);
+        el.classList.toggle('is-future', s > this.step);
+        el.classList.toggle('is-current', s === this.step && !el.classList.contains('tq-acclabel'));
+      });
+      this.q<HTMLInputElement>('#tq-step').value = String(this.step);
+      this.out('stepno').textContent = String(this.step);
+      this.q<HTMLButtonElement>('[data-act="prev"]').disabled = this.step <= 1;
+      this.q<HTMLButtonElement>('[data-act="next"]').disabled = this.step >= this.total;
+      if (card) {
+        for (const k of ['round', 'sup', 'buy', 'gap', 'score']) this.out(k).textContent = card.dataset[k] ?? '';
+        if (announce) this.out('say').textContent = card.dataset.say ?? '';
+      }
+      if (this.step >= this.total) this.stop();
+    }
+
+    private togglePlay() {
+      if (this.timer !== undefined) return this.stop();
+      if (this.step >= this.total) this.go(1);
+      this.q<HTMLElement>('[data-act="play"]').setAttribute('aria-pressed', 'true');
+      this.timer = window.setInterval(() => this.go(this.step + 1), 1400);
+    }
+
+    private stop() {
+      if (this.timer !== undefined) window.clearInterval(this.timer);
+      this.timer = undefined;
+      const play = this.q<HTMLElement>('[data-act="play"]');
+      play.setAttribute('aria-pressed', 'false');
+    }
+
+    private val(name: string): string {
+      return this.q<HTMLInputElement | HTMLSelectElement>(`[data-in="${name}"]`).value;
+    }
+
+    private resetGuard() {
+      this.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-in]').forEach((el) => {
+        if (el instanceof HTMLSelectElement) {
+          Array.from(el.options).forEach((o) => (o.selected = o.defaultSelected));
+        } else el.value = el.defaultValue;
+      });
+      this.runGuard();
+    }
+
+    private runGuard() {
+      const c = this.config;
+      const kind = this.val('delegate');
+      const num = (name: string): number | null => {
+        const v = Number(this.val(name));
+        return this.val(name).trim() === '' || Number.isNaN(v) ? null : v;
+      };
+      const draft: Terms = {
+        unit_price: num('unit_price'),
+        lead_time_days: num('lead_time_days'),
+        payment_days: num('payment_days'),
+        defect_ppm: num('defect_ppm'),
+      };
+      const isDraft = kind === 'counter';
+      const problems: string[] = [];
+      for (const [name, label, unit] of [
+        ['unit_price', 'Unit price', 'EUR'],
+        ['lead_time_days', 'Lead time', 'days'],
+      ] as const) {
+        const el = this.q<HTMLInputElement>(`[data-in="${name}"]`);
+        const v = num(name);
+        const bad = isDraft && (v === null || v < Number(el.min) || v > Number(el.max) || (name === 'lead_time_days' && !Number.isInteger(v)));
+        if (bad) {
+          el.setAttribute('aria-invalid', 'true');
+          problems.push(`${label} must be ${name === 'lead_time_days' ? 'a whole number ' : ''}between ${el.min} and ${el.max} ${unit}.`);
+        } else el.removeAttribute('aria-invalid');
+      }
+      this.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-draft]').forEach((el) => (el.disabled = !isDraft));
+      this.out('guarderr').textContent = problems.length > 0 ? `${problems.join(' ')} The result below still shows the last valid draft.` : '';
+      if (problems.length > 0) return;
+      const sheet = c.supplierSheets[this.val('supplierSheet')]!;
+      const thread: ThreadState = {
+        supplierId: c.supplierId,
+        opening: sheet.opening,
+        standing: sheet.standing,
+        standingId: 'offer:SYN-s',
+        status: this.val('status') as SupplierStatus,
+        buyerMessagesSent: c.roundLimit - Number(this.val('movesLeft')),
+        guardCountersUsed: Number(this.val('guardCountersUsed')),
+      };
+      const delegate: Delegate =
+        kind === 'counter' ? { type: 'counter', sheets: [draft] } : kind === 'accept' ? { type: 'accept', termSheetId: 'offer:SYN-s' } : kind === 'crash' ? { type: 'crash' } : { type: 'walk_away' };
+      const outcome = guardDecide(c, thread, delegate);
+      this.out('checktitle').textContent = isDraft ? 'Draft sheet against the must-haves' : 'Supplier’s standing sheet against the must-haves';
+      this.out('checks').innerHTML = checksHtml(c, isDraft ? draft : sheet.standing, isDraft ? 'draft' : 'standing sheet');
+      this.out('outcome').innerHTML = outcomeHtml(c, outcome, isDraft ? [draft] : []);
+      this.out('guardsay').textContent = outcomeSummary(outcome);
+    }
+  }
+
+  if (!customElements.get('tacto-demo')) customElements.define('tacto-demo', TactoDemo);
+</script>

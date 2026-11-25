@@ -1,0 +1,152 @@
+---
+/**
+ * All six CVs on one compact panel: one row per specialization, one download per language.
+ * Plain links to static PDFs — nothing here needs JavaScript.
+ */
+import { CV_FOCUS, cvFocusLabel } from '../../data/cv';
+import { cvMeta, loadCvs } from '../../lib/cv';
+import { person } from '../../data/profile';
+
+const files = loadCvs();
+const rows = CV_FOCUS.map((focus) => ({
+  focus,
+  label: cvFocusLabel[focus],
+  en: files.find((f) => f.focus === focus && f.lang === 'en'),
+  de: files.find((f) => f.focus === focus && f.lang === 'de'),
+})).filter((r) => r.en || r.de);
+const mailto = `mailto:${person.email}?subject=${encodeURIComponent('CV request')}`;
+---
+
+{
+  rows.length > 0 ? (
+    <section class="cvm corner-marks" aria-labelledby="cvm-h">
+      <header>
+        <h2 id="cvm-h">Download CV</h2>
+        <p class="mono">{cvMeta(files)}</p>
+      </header>
+      <ul role="list">
+        {rows.map((r) => (
+          <li>
+            <span class="cv-spec">{r.label}</span>
+            <span class="btns">
+              {r.en && (
+                <a class="btn btn--primary btn--dl" href={r.en.href} download={r.en.file} hreflang="en" type="application/pdf" aria-label={`Download CV, ${r.label}, English, PDF`}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10" stroke-linecap="square" /></svg>
+                  English
+                </a>
+              )}
+              {r.de && (
+                <a class="btn btn--dl" href={r.de.href} download={r.de.file} hreflang="de" lang="de" type="application/pdf" aria-label={`Lebenslauf herunterladen, ${r.label}, Deutsch, PDF`}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 1.5v8M3.5 6.5 7 10l3.5-3.5M2 12.5h10" stroke-linecap="square" /></svg>
+                  Deutsch
+                </a>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p class="foot">
+        <a href="/recruiter/">Recruiter brief by specialization</a>
+        <a href={mailto}>Request a tailored CV by email</a>
+      </p>
+    </section>
+  ) : (
+    <section class="cvm corner-marks" aria-labelledby="cvm-h">
+      <header>
+        <h2 id="cvm-h">CV</h2>
+      </header>
+      <p class="none">
+        <a class="btn btn--primary" href={mailto}>Request CV by email</a>
+        <a class="btn" href="/recruiter/">Recruiter brief</a>
+      </p>
+    </section>
+  )
+}
+
+<style>
+  .cvm {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+  }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-1) var(--s-4);
+    padding: var(--s-3) var(--s-5);
+    border-bottom: 1px solid var(--border);
+  }
+  h2 {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  header .mono {
+    font-size: var(--text-2xs);
+  }
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3) var(--s-5);
+    padding: var(--s-3) var(--s-5);
+    border-bottom: 1px solid var(--border);
+  }
+  .cv-spec {
+    font-family: var(--font-display);
+    font-size: var(--text-md);
+    font-weight: 560;
+    letter-spacing: -0.015em;
+  }
+  .btns {
+    display: flex;
+    gap: var(--s-2);
+  }
+  .btn--dl {
+    min-width: 7.5rem;
+    padding-inline: var(--s-4);
+  }
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-5);
+    padding: 0 var(--s-5);
+    font-size: var(--text-sm);
+  }
+  .foot a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--text-2);
+  }
+  .foot a:hover {
+    color: var(--text);
+  }
+  .none {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    padding: var(--s-5);
+  }
+  @media (max-width: 30em) {
+    li {
+      padding-inline: var(--s-4);
+    }
+    .btns {
+      width: 100%;
+    }
+    .btn--dl {
+      flex: 1;
+      min-width: 0;
+    }
+    header,
+    .foot {
+      padding-inline: var(--s-4);
+    }
+  }
+</style>

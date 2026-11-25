@@ -1,0 +1,32 @@
+---
+import DemographicsVisual from './visuals/DemographicsVisual.astro';
+import LongisafeVisual from './visuals/LongisafeVisual.astro';
+import InfraflowVisual from './visuals/InfraflowVisual.astro';
+import RideplannerVisual from './visuals/RideplannerVisual.astro';
+import TactoVisual from './visuals/TactoVisual.astro';
+import PortfolioVisual from './visuals/PortfolioVisual.astro';
+
+interface Props {
+  visual: 'longisafe' | 'demographics' | 'infraflow' | 'rideplanner' | 'tacto' | 'portfolio';
+}
+const { visual } = Astro.props;
+---
+
+<div class="pv eng-grid" data-visual={visual}>
+  {visual === 'demographics' && <DemographicsVisual />}
+  {visual === 'longisafe' && <LongisafeVisual />}
+  {visual === 'infraflow' && <InfraflowVisual />}
+  {visual === 'rideplanner' && <RideplannerVisual />}
+  {visual === 'tacto' && <TactoVisual />}
+  {visual === 'portfolio' && <PortfolioVisual />}
+</div>
+
+<style>
+  .pv {
+    position: relative;
+    height: 100%;
+    min-height: 14rem;
+    background-color: var(--bg);
+    overflow: hidden;
+  }
+</style>

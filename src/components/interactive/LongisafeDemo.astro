@@ -1,0 +1,557 @@
+---
+/**
+ * LongiSafe monitor replay. Server-renders the default scenario (S09, default thresholds) so the
+ * figure is complete without JavaScript; the custom element re-runs the TypeScript port of the
+ * monitors in the browser when a control changes.
+ */
+import raw from '../../data/demo/longisafe.json';
+import { DEFAULT_CONFIG, type DemoDataset } from '../../lib/longisafe';
+import { buildView, readoutHtml, renderChart } from '../../lib/longisafe-chart';
+
+const data = raw as unknown as DemoDataset;
+const DEFAULT_SCENARIO = 'S09';
+const view = buildView(data, DEFAULT_SCENARIO, { ...DEFAULT_CONFIG });
+const labels: Record<string, [long: string, short: string]> = {
+  S05: ['Regen loss, compensated', 'Compensated'],
+  S09: ['Accel sensor bias', 'Accel bias'],
+  S10: ['Frozen speed signal', 'Frozen speed'],
+  S14: ['Regen loss, uncompensated', 'Uncompensated'],
+};
+const sliders = [
+  { key: 'coherence_mps2', label: 'MON-003 coherence limit', unit: 'm/s²', min: 0.3, max: 2, step: 0.1, digits: 2 },
+  { key: 'decel_error_mps2', label: 'MON-005 undershoot limit', unit: 'm/s²', min: 0.3, max: 3.2, step: 0.1, digits: 2 },
+  { key: 'evidence_s', label: 'Evidence time (debounce)', unit: 's', min: 0.1, max: 2.5, step: 0.1, digits: 2 },
+] as const;
+---
+
+<longisafe-demo class="demo" data-default={DEFAULT_SCENARIO}>
+  <div class="demo-bar">
+    <span>Monitor replay · LongiSafe Lab @ {data.provenance.commit}</span>
+    <span class="badge">Synthetic data · browser re-implementation</span>
+  </div>
+
+  <form class="demo-controls" aria-label="Demo controls">
+    <fieldset class="ls-scn">
+      <legend>Scenario</legend>
+      <div class="seg">
+        {
+          data.scenarios.map((s) => (
+            <label>
+              <input type="radio" name="scenario" value={s.id} checked={s.id === DEFAULT_SCENARIO} disabled />
+              <b>{s.id}</b>
+              <span class="ls-long">{labels[s.id][0]}</span>
+              <span class="ls-short" aria-hidden="true">{labels[s.id][1]}</span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+    {
+      sliders.map((s) => (
+        <div class="field ls-slider">
+          <label for={`ls-${s.key}`}>
+            {s.label} <output for={`ls-${s.key}`} data-out={s.key}>{DEFAULT_CONFIG[s.key].toFixed(s.digits)} {s.unit}</output>
+          </label>
+          <input id={`ls-${s.key}`} type="range" name={s.key} min={s.min} max={s.max} step={s.step} value={DEFAULT_CONFIG[s.key]} data-unit={s.unit} data-digits={s.digits} disabled />
+          <span class="ls-range" aria-hidden="true"><span>{s.min}</span><span>default {DEFAULT_CONFIG[s.key]}</span><span>{s.max}</span></span>
+        </div>
+      ))
+    }
+    <button type="reset" class="btn" disabled>Reset</button>
+    <p class="ls-nojs">The controls are disabled because they need JavaScript. The state shown is scenario S09 with the repository's default thresholds.</p>
+  </form>
+
+  <ul class="ls-strip" role="list" aria-label="Verdicts of the three sustained monitors" data-strip set:html={view.strip} />
+
+  <div class="demo-stage">
+    <p class="ls-desc" data-desc>{view.description}</p>
+    <div class="ls-plot" data-plot set:html={renderChart(view.model, 760)} />
+    <p class="ls-key">
+      <span class="ls-swatch" aria-hidden="true"></span> Fault truth from the generator's separate truth file: drawn here and used for the latency figure, never passed to the monitors.
+      <span class="ls-tri" aria-hidden="true">▼</span> Sample at which a breach has lasted for the evidence time.
+    </p>
+  </div>
+
+  <dl class="demo-readout" data-readout set:html={readoutHtml(view.readout)} />
+
+  <div class="table-scroll ls-verdicts" tabindex="0" role="group" aria-label="Verdict per monitor">
+    <table>
+      <caption class="visually-hidden">Verdict per monitor for the selected scenario and thresholds</caption>
+      <thead>
+        <tr>
+          <th scope="col">Monitor</th>
+          <th scope="col">Verdict</th>
+          <th scope="col" class="num">Limit</th>
+          <th scope="col" class="num">Peak</th>
+          <th scope="col" class="num">Evidence window</th>
+          <th scope="col" class="num">Detected</th>
+          <th scope="col" class="num">Latency</th>
+        </tr>
+      </thead>
+      <tbody data-verdicts set:html={view.verdictRows} />
+    </table>
+  </div>
+
+  <p class="visually-hidden" role="status" data-status></p>
+
+  <details>
+    <summary>Data table: plotted samples (every <span data-stride>0.25</span> s)</summary>
+    <div class="table-scroll" tabindex="0" role="group" aria-label="Plotted samples">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="num">t, s</th>
+            <th scope="col" class="num">Speed, m/s</th>
+            <th scope="col" class="num">Accel, m/s²</th>
+            <th scope="col" class="num">Request, m/s²</th>
+            <th scope="col" class="num">MON-003 residual, m/s²</th>
+            <th scope="col" class="num">MON-005 undershoot, m/s²</th>
+            <th scope="col">In truth window</th>
+          </tr>
+        </thead>
+        <tbody data-rows set:html={view.dataRows} />
+      </table>
+    </div>
+  </details>
+
+  <p class="demo-foot">
+    Synthetic signals from the repository's deterministic generator (seed 41): four of its ten scenarios at full resolution, 702 rows each. Verdicts are computed in your browser by a TypeScript port of the
+    Python reference monitors (<code>python/longisafe/analysis.py</code> @ <code>{data.provenance.commit}</code>), unit-tested against that reference. A FAIL is a violated illustrative rule, not a statement
+    about vehicle safety. Not the Excel workbook; not production safety tooling.
+  </p>
+</longisafe-demo>
+
+<script>
+  import raw from '../../data/demo/longisafe.json';
+  import { DEFAULT_CONFIG, type DemoDataset, type MonitorConfig } from '../../lib/longisafe';
+  import { buildView, readoutHtml, renderChart, xMaxFor } from '../../lib/longisafe-chart';
+
+  const data = raw as unknown as DemoDataset;
+
+  class LongisafeDemo extends HTMLElement {
+    private form!: HTMLFormElement;
+    private plot!: HTMLElement;
+    private width = 0;
+
+    connectedCallback() {
+      this.form = this.querySelector('form')!;
+      this.plot = this.querySelector<HTMLElement>('[data-plot]')!;
+      // Controls are server-rendered disabled so they are never dead without JavaScript.
+      for (const el of this.form.querySelectorAll<HTMLInputElement | HTMLButtonElement>('[disabled]')) el.disabled = false;
+      this.form.addEventListener('input', () => this.update(true));
+      this.form.addEventListener('submit', (e) => e.preventDefault());
+      this.form.addEventListener('reset', () => requestAnimationFrame(() => this.update(true)));
+      // Re-render on the next frame: changing layout inside the observer callback makes WebKit report
+      // "ResizeObserver loop completed with undelivered notifications".
+      let pending = 0;
+      new ResizeObserver(() => {
+        cancelAnimationFrame(pending);
+        pending = requestAnimationFrame(() => {
+          const w = Math.round(this.plot.clientWidth);
+          if (w > 0 && Math.abs(w - this.width) > 4) {
+            this.width = w;
+            this.update(false);
+          }
+        });
+      }).observe(this.plot);
+    }
+
+    private config(): MonitorConfig {
+      const c: MonitorConfig = { ...DEFAULT_CONFIG };
+      for (const input of this.form.querySelectorAll<HTMLInputElement>('input[type=range]')) {
+        const key = input.name as keyof MonitorConfig;
+        c[key] = Number(input.value);
+        const out = this.querySelector(`[data-out="${key}"]`);
+        if (out) out.textContent = `${c[key].toFixed(Number(input.dataset.digits))} ${input.dataset.unit}`;
+      }
+      return c;
+    }
+
+    private update(announce: boolean) {
+      const scenario = new FormData(this.form).get('scenario') as string;
+      const view = buildView(data, scenario, this.config());
+      this.plot.innerHTML = renderChart(view.model, this.width || this.plot.clientWidth || 760);
+      this.querySelector('[data-desc]')!.textContent = view.description;
+      this.querySelector('[data-readout]')!.innerHTML = readoutHtml(view.readout);
+      this.querySelector('[data-strip]')!.innerHTML = view.strip;
+      this.querySelector('[data-verdicts]')!.innerHTML = view.verdictRows;
+      this.querySelector('[data-rows]')!.innerHTML = view.dataRows;
+      this.querySelector('[data-stride]')!.textContent = xMaxFor(view.model.stopTime) <= 10 ? '0.25' : '1';
+      if (announce) this.querySelector('[data-status]')!.textContent = view.status;
+    }
+  }
+  if (!customElements.get('longisafe-demo')) customElements.define('longisafe-demo', LongisafeDemo);
+</script>
+
+<style is:global>
+  longisafe-demo {
+    display: block;
+  }
+  longisafe-demo .demo-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+    align-items: start;
+  }
+  longisafe-demo .ls-scn {
+    grid-column: 1 / -1;
+  }
+  longisafe-demo .ls-scn legend {
+    margin-bottom: var(--s-1);
+  }
+  longisafe-demo .seg > label {
+    min-height: 2.75rem;
+    font-weight: 400;
+  }
+  longisafe-demo .seg b {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: var(--text-xs);
+  }
+  longisafe-demo .ls-short {
+    display: none;
+  }
+  longisafe-demo .seg > label {
+    gap: 0.45em;
+  }
+  longisafe-demo .ls-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--raised);
+  }
+  longisafe-demo .ls-strip li {
+    display: grid;
+    gap: 2px;
+    padding: var(--s-3) var(--s-4);
+    border-left: 1px solid var(--border);
+    min-width: 0;
+  }
+  longisafe-demo .ls-strip > li + li {
+    margin-top: 0;
+  }
+  longisafe-demo .ls-strip li {
+    align-content: start;
+  }
+  longisafe-demo .ls-strip small i {
+    font-style: normal;
+  }
+  longisafe-demo .ls-strip small span {
+    display: inline-block;
+    white-space: nowrap;
+    margin-right: 0.6em;
+  }
+  longisafe-demo .ls-strip li:first-child {
+    border-left: 0;
+  }
+  longisafe-demo .ls-strip li[data-state='fail'] {
+    box-shadow: inset 0 2px 0 var(--fail);
+  }
+  longisafe-demo .ls-strip li[data-state='pass'] {
+    box-shadow: inset 0 2px 0 var(--ok);
+  }
+  longisafe-demo .ls-sid {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  longisafe-demo .ls-sid span {
+    color: var(--text-3);
+  }
+  longisafe-demo .ls-strip .verdict {
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+  longisafe-demo .ls-strip small {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-2);
+  }
+  longisafe-demo .ls-slider label {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  longisafe-demo .ls-slider output {
+    color: var(--text);
+    text-transform: none;
+    white-space: nowrap;
+  }
+  longisafe-demo .ls-slider input {
+    height: 2.75rem;
+  }
+  longisafe-demo .ls-range {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -0.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-3);
+  }
+  longisafe-demo button[type='reset'] {
+    justify-self: start;
+    align-self: center;
+  }
+  longisafe-demo .ls-nojs {
+    grid-column: 1 / -1;
+    font-size: var(--text-xs);
+    color: var(--text-3);
+  }
+  .js longisafe-demo .ls-nojs {
+    display: none;
+  }
+  longisafe-demo .ls-desc {
+    margin-bottom: var(--s-4);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    max-width: 72ch;
+  }
+  longisafe-demo .ls-plot {
+    overflow-x: auto;
+  }
+  longisafe-demo .ls-plot svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: hidden;
+  }
+  /* Without JavaScript the chart cannot be re-laid-out for narrow screens: keep it legible and let it scroll. */
+  html:not(.js) longisafe-demo .ls-plot svg {
+    min-width: 40rem;
+  }
+  longisafe-demo .ls-key {
+    margin-top: var(--s-3);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    color: var(--text-3);
+    max-width: 80ch;
+  }
+  longisafe-demo .ls-swatch {
+    display: inline-block;
+    width: 1.4em;
+    height: 0.8em;
+    vertical-align: -0.05em;
+    background: color-mix(in srgb, var(--warn) 16%, transparent);
+    border-inline: 1px dashed var(--warn);
+  }
+  longisafe-demo .ls-tri {
+    color: var(--fail);
+  }
+  longisafe-demo .demo-readout dd small {
+    display: block;
+    font-size: var(--text-2xs);
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+  }
+  longisafe-demo .ls-verdicts {
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+  }
+  longisafe-demo .ls-verdicts th[scope='row'] {
+    font-weight: 400;
+    min-width: 11rem;
+  }
+  longisafe-demo tr:last-child > th {
+    border-bottom: 0;
+  }
+  @media (min-width: 48em) {
+    longisafe-demo .ls-verdicts th[scope='row'] {
+      white-space: nowrap;
+    }
+  }
+  longisafe-demo .ls-rid {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text);
+    margin-right: var(--s-2);
+  }
+  longisafe-demo .ls-rname {
+    color: var(--text-2);
+  }
+  longisafe-demo td {
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+  longisafe-demo th,
+  longisafe-demo td {
+    padding: var(--s-2) var(--s-3);
+  }
+  longisafe-demo th:first-child {
+    padding-left: var(--s-4);
+  }
+
+  @media (max-width: 40em) {
+    longisafe-demo .ls-long {
+      display: none;
+    }
+    longisafe-demo .ls-short {
+      display: inline;
+    }
+    longisafe-demo .seg {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    longisafe-demo .seg > label {
+      justify-content: flex-start;
+      padding: var(--s-2) var(--s-3);
+      white-space: normal;
+      line-height: 1.25;
+      min-width: 0;
+    }
+    longisafe-demo .seg b {
+      flex: none;
+      white-space: nowrap;
+    }
+    longisafe-demo .demo-controls {
+      gap: var(--s-2) var(--s-4);
+      padding: var(--s-3) var(--s-4);
+    }
+    longisafe-demo .ls-slider input {
+      height: 2.75rem;
+      margin-block: -0.35rem;
+    }
+    longisafe-demo .ls-range {
+      display: none;
+    }
+    longisafe-demo .ls-sid span {
+      display: block;
+    }
+    longisafe-demo .ls-strip li {
+      padding: var(--s-2) var(--s-3);
+    }
+    longisafe-demo .ls-strip small {
+      line-height: 1.35;
+    }
+    longisafe-demo .demo-stage {
+      padding: var(--s-3) var(--s-3) var(--s-4);
+    }
+    longisafe-demo .ls-desc {
+      margin-bottom: var(--s-3);
+      font-size: var(--text-xs);
+    }
+    longisafe-demo .demo-readout {
+      grid-template-columns: 1fr 1fr;
+    }
+    longisafe-demo .demo-readout dd {
+      font-size: var(--text-base);
+    }
+    longisafe-demo th,
+    longisafe-demo td {
+      padding: var(--s-2) var(--s-3);
+    }
+  }
+
+  @media (max-width: 22.5em) {
+    longisafe-demo .seg {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* Print: nothing scrolls on paper, so nothing may be clipped. */
+  @media print {
+    longisafe-demo.demo,
+    longisafe-demo .table-scroll,
+    longisafe-demo .ls-plot,
+    longisafe-demo details .table-scroll {
+      overflow: visible;
+      max-height: none;
+    }
+    longisafe-demo table {
+      font-size: 0.6875rem;
+    }
+    longisafe-demo th,
+    longisafe-demo td {
+      padding: 2px 4px;
+      white-space: normal;
+    }
+    longisafe-demo .ls-verdicts th[scope='row'] {
+      min-width: 0;
+      white-space: normal;
+    }
+    longisafe-demo .demo-controls {
+      display: none;
+    }
+  }
+
+  /* Chart marks */
+  .ls-chart .ls-m5 {
+    stroke-dasharray: 9 3;
+  }
+  .ls-chart .ls-ptitle {
+    fill: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ls-chart .ls-clean {
+    stroke: var(--text-3);
+    stroke-width: 1.25;
+    stroke-dasharray: 2 3;
+  }
+  .ls-chart .ls-truth {
+    fill: color-mix(in srgb, var(--warn) 13%, transparent);
+  }
+  .ls-chart .ls-truth-edge {
+    stroke: var(--warn);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+  }
+  .ls-chart .ls-limit {
+    stroke: var(--text-2);
+    stroke-width: 1;
+    stroke-dasharray: 7 3 1.5 3;
+    fill: none;
+  }
+  .ls-chart .ls-limit--5 {
+    stroke: var(--warn);
+  }
+  .ls-chart .ls-limit-label {
+    fill: var(--text);
+    stroke: var(--bg);
+    stroke-width: 3px;
+    paint-order: stroke;
+    stroke-dasharray: none;
+  }
+  .ls-chart .ls-limit-label.ls-limit--5 {
+    fill: var(--warn);
+  }
+  .ls-chart .ls-note,
+  .ls-chart .ls-detlabel {
+    fill: var(--text);
+    stroke: var(--bg);
+    stroke-width: 3px;
+    paint-order: stroke;
+  }
+  .ls-chart .ls-detline {
+    stroke: var(--fail);
+    stroke-width: 1.25;
+  }
+  .ls-chart .ls-det {
+    fill: var(--fail);
+  }
+  .ls-chart .ls-lane-id {
+    fill: var(--text-2);
+  }
+  .ls-chart .ls-lane-text[data-state='fail'] {
+    fill: var(--fail);
+  }
+  .ls-chart .ls-lane-text[data-state='pass'] {
+    fill: var(--ok);
+  }
+  .ls-chart .ls-lane-text[data-state='truth'] {
+    fill: var(--warn);
+  }
+  .ls-chart .ls-bar[data-state='fail'] {
+    fill: var(--fail);
+  }
+  .ls-chart .ls-bar[data-state='truth'],
+  .ls-chart .ls-bar-open[data-state='truth'] {
+    fill: color-mix(in srgb, var(--warn) 30%, transparent);
+    stroke: var(--warn);
+    stroke-width: 1;
+  }
+</style>

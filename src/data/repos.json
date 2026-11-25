@@ -1,0 +1,40 @@
+{
+  "owner": "Hyp3rAlex",
+  "repos": [
+    {
+      "fullName": "Hyp3rAlex/longisafe-lab",
+      "kind": "case-study",
+      "project": "longisafe-lab"
+    },
+    {
+      "fullName": "Hyp3rAlex/demographics-service",
+      "kind": "case-study",
+      "project": "demographics-service"
+    },
+    {
+      "fullName": "Hyp3rAlex/infraflow-mission-control",
+      "kind": "case-study",
+      "project": "infraflow-mission-control"
+    },
+    {
+      "fullName": "Hyp3rAlex/Hyp3rAlex.github.io",
+      "kind": "case-study",
+      "project": "portfolio"
+    },
+    {
+      "fullName": "Hyp3rAlex/LeetCode-Problem-Solutions",
+      "kind": "archive",
+      "note": "A few early LeetCode solutions in JavaScript. Practice exercises, not a project."
+    },
+    {
+      "fullName": "Hyp3rAlex/neetcode-submissions",
+      "kind": "archive",
+      "note": "Auto-synced NeetCode practice submissions. Practice exercises, not a project."
+    },
+    {
+      "fullName": "Hyp3rAlex/Hyp3rAlex",
+      "kind": "archive",
+      "note": "GitHub profile README."
+    }
+  ]
+}

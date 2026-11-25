@@ -1,0 +1,217 @@
+---
+/**
+ * Pipeline diagram for InfraFlow Mission Control, drawn from the audited source at bf7ebe0.
+ * Solid = code and files in the repository (re-run for this page). Dashed = the private Atlassian site,
+ * which is evidenced by recorded snapshots and screenshots only.
+ */
+const W = 205;
+const X = [10, 235, 460, 685];
+const cx = (i: number) => X[i]! + W / 2;
+
+const row1 = [
+  { t: 'catalog.py · config.py', a: '50 hand-authored demands', b: 'seed, cutoff 2026-11-16' },
+  { t: 'generator.py', a: 'seeded per demand', b: 'injects named anomalies' },
+  { t: 'data/synthetic/', a: '9 CSV tables', b: '+ ground_truth.json' },
+  { t: 'models.load_dataset', a: 'tolerant parsing', b: 'never drops a row' },
+];
+const row2 = [
+  { t: 'finance.reconcile', a: 'budget, actuals, POs', b: 'commitment-based forecast' },
+  { t: 'capacity.assess', a: 'team-month hours', b: 'over-allocation check' },
+  { t: 'scoring.evaluate', a: 'priority score, 4 gates', b: 'lifecycle transition rules' },
+  { t: 'kpis.compute', a: 'about 40 KPIs, each with', b: 'definition + source ids' },
+];
+const row4 = [
+  { t: '13 Markdown reports', a: '+ report_facts.json', b: '+ exception_register.csv' },
+  { t: '2 Excel workbooks', a: 'openpyxl, static values', b: '+ formula exercise book' },
+  { t: '5-slide deck', a: 'python-pptx', b: 'timestamps normalised' },
+  { t: 'Confluence page sources', a: '12 HTML files in docs/', b: 'published via connector' },
+];
+
+/* Vertical drawing for narrow screens: same facts, one column. Sizes are in viewBox units (360 wide). */
+type Block = { t: string; lines: string[]; kind?: 'hi' | 'ext' | 'plain'; arrow?: 'solid' | 'dash' | 'none'; note?: string };
+const blocks: Block[] = [
+  { t: 'catalog.py · config.py', lines: ['50 hand-authored demands', 'seed and cutoff 2026-11-16'] },
+  { t: 'generator.py', lines: ['seeded per demand, named anomalies'] },
+  { t: 'data/synthetic/', lines: ['9 CSV tables + ground_truth.json'] },
+  { t: 'models.load_dataset', lines: ['tolerant parsing, never drops a row'] },
+  { t: 'Analysis modules', lines: ['finance.reconcile: forecast', 'capacity.assess: team hours', 'scoring.evaluate: score, 4 gates', 'kpis.compute: about 40 KPIs'] },
+  { t: 'validator → report context', kind: 'hi', lines: ['19-entry exception register', 'any CRITICAL entry marks every', 'output PROVISIONAL'] },
+  { t: 'Generated outputs', lines: ['13 Markdown reports + facts JSON', '2 Excel workbooks', '5-slide deck', '12 Confluence page sources (HTML)'] },
+  { t: 'External: private Atlassian site', kind: 'ext', arrow: 'dash', note: 'via connector', lines: ['Free plan, recorded 17–18 Nov 2026', 'Jira: 50 issues, 16 JQL filters', 'Confluence: pages + Jira lists', 'No live sync, no automation rules,', 'gates not enforced in Jira'] },
+  { t: 'Recorded snapshot', arrow: 'dash', note: 'recorded read', lines: ['evidence/*.json, 50 issues', 'transcribed 17 Nov 2026'] },
+  { t: 'jira_sync.reconcile · drift', lines: ['offline, snapshot vs dataset:', '0 field differences, 0 drift'] },
+  { t: 'jira_client.py', arrow: 'none', lines: ['REST v3 client in the repository', 'mock-tested only, never run live'] },
+];
+const GAP = 30;
+let y = 30;
+const placed = blocks.map((b, i) => {
+  const h = 34 + b.lines.length * 18 + 8;
+  const top = y;
+  y += h + (blocks[i + 1]?.arrow === 'none' ? 16 : GAP);
+  return { ...b, top, h };
+});
+const mobileH = y - GAP + 16;
+---
+
+<div class="dg-desktop has-mobile">
+<svg
+  viewBox="0 0 900 604"
+  role="img"
+  aria-labelledby="ifa-t ifa-d"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <title id="ifa-t">InfraFlow Mission Control pipeline</title>
+  <desc id="ifa-d">
+    Offline Python pipeline: a hand-authored catalogue and configuration feed a seeded generator that writes nine CSV tables and a ground-truth file. A tolerant loader feeds finance reconciliation, capacity assessment, scoring with four gates, and KPI computation. A validator builds a 19-entry exception register; any critical entry marks all outputs provisional. One report context produces 13 Markdown reports, two Excel workbooks, a five-slide deck and 12 Confluence page sources. Separately, a private Atlassian Cloud site holding a Jira project and a Confluence space is shown as an external dashed box: it was seeded and published through an Atlassian connector, and only a recorded snapshot of it is reconciled offline against the dataset. The Jira REST client in the repository is mock-tested only. There is no live synchronisation.
+  </desc>
+  <defs>
+    <marker id="ifa-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="dg-head" d="M0 0 8 4 0 8z"></path>
+    </marker>
+  </defs>
+
+  <text class="dg-sub" x="10" y="16">IN THE REPOSITORY · OFFLINE · DETERMINISTIC · RE-RUN FOR THIS PAGE ON 25 NOV 2026</text>
+
+  {/* Row 1: generation and loading */}
+  {
+    row1.map((b, i) => (
+      <g>
+        <rect class="dg-box" x={X[i]} y="28" width={W} height="62" rx="4" />
+        <text class="dg-title" x={X[i]! + 12} y="49">{b.t}</text>
+        <text class="dg-sub" x={X[i]! + 12} y="66">{b.a}</text>
+        <text class="dg-sub" x={X[i]! + 12} y="80">{b.b}</text>
+      </g>
+    ))
+  }
+  {[0, 1, 2].map((i) => <path class="dg-flow" d={`M${X[i]! + W} 59H${X[i + 1]! - 1}`} marker-end="url(#ifa-arrow)" />)}
+
+  {/* Loader fans out to the four analysis modules */}
+  <path class="dg-flow" d={`M${cx(3)} 90V108H${cx(0)}`} />
+  {[0, 1, 2, 3].map((i) => <path class="dg-flow" d={`M${cx(i)} 108V125`} marker-end="url(#ifa-arrow)" />)}
+  {
+    row2.map((b, i) => (
+      <g>
+        <rect class="dg-box" x={X[i]} y="126" width={W} height="62" rx="4" />
+        <text class="dg-title" x={X[i]! + 12} y="147">{b.t}</text>
+        <text class="dg-sub" x={X[i]! + 12} y="164">{b.a}</text>
+        <text class="dg-sub" x={X[i]! + 12} y="178">{b.b}</text>
+      </g>
+    ))
+  }
+
+  {/* Validator + report context */}
+  {[0, 1, 2, 3].map((i) => <path class="dg-flow" d={`M${cx(i)} 188V223`} marker-end="url(#ifa-arrow)" />)}
+  <rect class="dg-box dg-box--hi" x="10" y="224" width="880" height="62" rx="4"></rect>
+  <text class="dg-title" x="22" y="245">validator.build_register → reports.build_context</text>
+  <text class="dg-sub" x="22" y="262">19-entry exception register (6 critical, 12 warning, 1 info) with owner role and due date per entry</text>
+  <text class="dg-sub" x="22" y="276">any CRITICAL entry marks every output PROVISIONAL · one context feeds all four output families</text>
+
+  {/* Outputs */}
+  {[0, 1, 2, 3].map((i) => <path class="dg-flow" d={`M${cx(i)} 286V321`} marker-end="url(#ifa-arrow)" />)}
+  {
+    row4.map((b, i) => (
+      <g>
+        <rect class="dg-box" x={X[i]} y="322" width={W} height="62" rx="4" />
+        <text class="dg-title" x={X[i]! + 12} y="343">{b.t}</text>
+        <text class="dg-sub" x={X[i]! + 12} y="360">{b.a}</text>
+        <text class="dg-sub" x={X[i]! + 12} y="374">{b.b}</text>
+      </g>
+    ))
+  }
+
+  {/* Jira bridge that lives in the repository */}
+  <text class="dg-sub" x="10" y="428">IN THE REPOSITORY · JIRA BRIDGE, OFFLINE ONLY</text>
+  <rect class="dg-box" x="10" y="456" width={W} height="62" rx="4"></rect>
+  <text class="dg-title" x="22" y="477">jira_client.py</text>
+  <text class="dg-sub" x="22" y="494">REST v3 client: paging, retry</text>
+  <text class="dg-sub" x="22" y="508">mock-tested, never run live</text>
+
+  <rect class="dg-box" x="235" y="456" width={W} height="62" rx="4"></rect>
+  <text class="dg-title" x="247" y="477">Recorded snapshot</text>
+  <text class="dg-sub" x="247" y="494">evidence/*.json, 50 issues</text>
+  <text class="dg-sub" x="247" y="508">transcribed, 17 Nov 2026</text>
+
+  <rect class="dg-box" x="10" y="542" width="430" height="52" rx="4"></rect>
+  <text class="dg-title" x="22" y="563">jira_sync.reconcile · jira_live.drift</text>
+  <text class="dg-sub" x="22" y="580">snapshot vs dataset: 0 field differences, 0 lifecycle drift</text>
+  <path class="dg-flow" d="M337 518V541" marker-end="url(#ifa-arrow)"></path>
+
+  {/* External, private, not reproducible */}
+  <rect class="dg-box dg-box--ext" x="450" y="408" width="440" height="186" rx="4"></rect>
+  <text class="dg-sub" x="462" y="428">EXTERNAL · PRIVATE ATLASSIAN CLOUD SITE, FREE PLAN</text>
+  <text class="dg-sub" x="462" y="442">not reproducible · recorded 17–18 Nov 2026</text>
+
+  <rect class="dg-box dg-box--ext" x="462" y="456" width="203" height="62" rx="4"></rect>
+  <text class="dg-title" x="474" y="477">Jira project</text>
+  <text class="dg-sub" x="474" y="494">50 issues, stage as label</text>
+  <text class="dg-sub" x="474" y="508">16 JQL filters, by hand</text>
+
+  <rect class="dg-box dg-box--ext" x="685" y="456" width="193" height="62" rx="4"></rect>
+  <text class="dg-title" x="697" y="477">Confluence space</text>
+  <text class="dg-sub" x="697" y="494">pages from the HTML</text>
+  <text class="dg-sub" x="697" y="508">+ embedded Jira lists</text>
+
+  <text class="dg-sub" x="462" y="544">Seeded and published through an Atlassian connector,</text>
+  <text class="dg-sub" x="462" y="558">not by the Python client. No live sync, no automation</text>
+  <text class="dg-sub" x="462" y="572">rules, and the gates are not enforced in Jira.</text>
+
+  {/* Dashed = manual / recorded steps crossing the boundary */}
+  <path class="dg-flow dg-flow--dash" d={`M${cx(3)} 384V455`} marker-end="url(#ifa-arrow)"></path>
+  <path class="dg-flow dg-flow--dash" d="M462 487H441" marker-end="url(#ifa-arrow)"></path>
+</svg>
+</div>
+
+<div class="dg-mobile">
+  <svg viewBox={`0 0 360 ${mobileH}`} role="img" aria-labelledby="ifm-t ifm-d" xmlns="http://www.w3.org/2000/svg">
+    <title id="ifm-t">InfraFlow Mission Control pipeline, vertical layout</title>
+    <desc id="ifm-d">
+      Top to bottom: catalogue and configuration, seeded generator, nine CSV tables with a ground-truth file, tolerant loader, four analysis modules, the validator and report context with a 19-entry exception register, and the generated outputs. A dashed arrow leads to the external private Atlassian site, which was published through a connector and has no live synchronisation. A recorded snapshot of it is reconciled offline with the dataset: zero differences. The Jira REST client is mock-tested only.
+    </desc>
+    <defs>
+      <marker id="ifm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+        <path class="dg-head" d="M0 0 8 4 0 8z"></path>
+      </marker>
+    </defs>
+    <text class="m-sub" x="10" y="16">IN THE REPOSITORY · OFFLINE</text>
+    {
+      placed.map((b, i) => (
+        <g>
+          {i > 0 && b.arrow !== 'none' && (
+            <path class:list={['dg-flow', { 'dg-flow--dash': b.arrow === 'dash' }]} d={`M180 ${b.top - GAP}V${b.top - 1}`} marker-end="url(#ifm-arrow)" />
+          )}
+          {b.note && <text class="m-sub" x="190" y={b.top - 10}>{b.note}</text>}
+          <rect class:list={['dg-box', { 'dg-box--hi': b.kind === 'hi', 'dg-box--ext': b.kind === 'ext' }]} x="10" y={b.top} width="340" height={b.h} rx="4" />
+          <text class="m-title" x="24" y={b.top + 24}>{b.t}</text>
+          {b.lines.map((l, j) => <text class="m-sub" x="24" y={b.top + 46 + j * 18}>{l}</text>)}
+        </g>
+      ))
+    }
+  </svg>
+</div>
+
+<style>
+  .m-title {
+    font-family: var(--font-body);
+    font-size: 15.5px;
+    font-weight: 600;
+    fill: var(--text);
+  }
+  .m-sub {
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    fill: var(--text-2);
+  }
+  .dg-mobile {
+    max-width: 26rem;
+    margin-inline: auto;
+  }
+  /* The wide drawing needs about 56rem to stay legible, so the vertical one is used up to there. */
+  @media (max-width: 63.99em) {
+    .dg-desktop {
+      display: none;
+    }
+    .dg-mobile {
+      display: block;
+    }
+  }
+</style>

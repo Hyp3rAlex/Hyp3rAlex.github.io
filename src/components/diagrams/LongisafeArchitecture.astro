@@ -1,0 +1,243 @@
+---
+/**
+ * LongiSafe Lab architecture, derived from the audited source at 12d8247:
+ * one synthetic generator, two independent analysers of the same CSV, and a cross-checker.
+ * Two drawings: the wide one for tablets and desktops, and a vertical one for phones (shared CSS shows exactly one).
+ */
+const stages = [
+  {
+    y: 204,
+    l: ['Strict import', 'csv_schema.load_csv · reject, never coerce'],
+    r: ['Strict import + SHA-256', 'modCsvImport.LoadCsv · modCore.Num · modHash'],
+  },
+  {
+    y: 274,
+    l: ['Validation gates + sustained monitors', 'analysis.evaluate · MON-001..005, MON-010'],
+    r: ['Validation gates + sustained monitors', 'modMonitors.AnalyzeChecks · CheckSustained'],
+  },
+  {
+    y: 344,
+    l: ['KPIs, withheld if MON-001..004 object', 'analysis.reference_metrics · analysis.analyze'],
+    r: ['KPIs, withheld if MON-001..004 object', 'modMetrics.ComputeMetrics'],
+  },
+  {
+    y: 414,
+    l: ['Export', 'cli.run → analysis.json + rule and metric CSVs'],
+    r: ['Charts, one-page report, export', 'modCharts · modReporting → summary.pdf + 4 CSV'],
+  },
+];
+
+/* ---- Mobile: the same facts top to bottom, 360 units wide ---- */
+const mPy = [
+  ['Strict import', 'csv_schema.load_csv'],
+  ['Gates + sustained monitors', 'analysis.evaluate · 6 monitors'],
+  ['KPIs, withheld on signal doubt', 'analysis.reference_metrics'],
+  ['Export', 'cli.run → JSON + 2 CSV'],
+];
+const mXl = [
+  ['Strict import + SHA-256', 'modCsvImport · modCore.Num'],
+  ['Gates + sustained monitors', 'modMonitors.AnalyzeChecks'],
+  ['KPIs, withheld on signal doubt', 'modMetrics.ComputeMetrics'],
+  ['Charts, one-page report, export', 'modCharts · modReporting'],
+];
+const STAGE_H = 54;
+const STAGE_GAP = 10;
+const groupH = 30 + mPy.length * (STAGE_H + STAGE_GAP) + 2;
+const G1 = 318;
+const G2 = G1 + groupH + 26;
+const XC = G2 + groupH + 30;
+const SIDE = XC + 64 + 26 + 56 + 40;
+const M_H = SIDE + 2 * 66 + 6;
+---
+
+<div class="dg-desktop has-mobile">
+<svg
+  viewBox="0 0 900 640"
+  role="img"
+  aria-labelledby="ls-arch-title ls-arch-desc"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <title id="ls-arch-title">LongiSafe Lab architecture</title>
+  <desc id="ls-arch-desc">
+    Scenario configuration files feed a Python point-mass generator. The generator writes an observed-signal CSV and, separately, a fault-truth JSON file that the monitors never read. The same CSV is
+    analysed twice: by a Python reference (strict import, validation gates and sustained monitors, KPIs, export) and by an Excel/VBA workbook with the same stages. A cross-checker script compares the
+    workbook's exported results with a Python re-analysis using per-field tolerances. A separate script byte-compares the VBA inside the workbook with the reviewable .bas source files. Fault truth is
+    used only by the suite runner and tests to compute detection latency.
+  </desc>
+  <defs>
+    <marker id="ls-arch-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="dg-head" d="M0 0L8 4L0 8z"></path>
+    </marker>
+  </defs>
+
+  <!-- Generation -->
+  <rect class="dg-box" x="30" y="16" width="190" height="58" rx="4"></rect>
+  <text class="dg-title" x="44" y="40">10 scenario configs</text>
+  <text class="dg-sub" x="44" y="58">scenarios/configs/*.json</text>
+
+  <rect class="dg-box" x="270" y="16" width="220" height="58" rx="4"></rect>
+  <text class="dg-title" x="284" y="40">Synthetic generator</text>
+  <text class="dg-sub" x="284" y="58">model.simulate · seed 41</text>
+
+  <rect class="dg-box dg-box--hi" x="540" y="16" width="330" height="58" rx="4"></rect>
+  <text class="dg-title" x="554" y="40">Observed signals (CSV)</text>
+  <text class="dg-sub" x="554" y="58">data/synthetic/&lt;id&gt;.csv · SI columns, no truth</text>
+
+  <rect class="dg-box dg-box--ext" x="270" y="104" width="220" height="52" rx="4"></rect>
+  <text class="dg-title" x="284" y="126">Fault truth (JSON)</text>
+  <text class="dg-sub" x="284" y="143">never read by the monitors</text>
+
+  <path class="dg-flow" d="M220 45H268" marker-end="url(#ls-arch-arrow)"></path>
+  <path class="dg-flow" d="M490 45H538" marker-end="url(#ls-arch-arrow)"></path>
+  <path class="dg-flow dg-flow--dash" d="M380 74V102" marker-end="url(#ls-arch-arrow)"></path>
+
+  <!-- Shared input fans out to both analysers -->
+  <path class="dg-flow" d="M705 74V166H230V176" marker-end="url(#ls-arch-arrow)"></path>
+  <path class="dg-flow" d="M705 166V176" marker-end="url(#ls-arch-arrow)"></path>
+  <text class="dg-sub" x="716" y="96">one shared input</text>
+
+  <!-- Columns -->
+  <rect class="dg-box dg-box--ext" x="30" y="178" width="400" height="302" rx="6"></rect>
+  <rect class="dg-box dg-box--ext" x="470" y="178" width="400" height="302" rx="6"></rect>
+  <text class="dg-sub ls-col" x="44" y="196">PYTHON REFERENCE · standard library</text>
+  <text class="dg-sub ls-col" x="484" y="196">EXCEL / VBA WORKBOOK · LongiSafeLab.xlsm · 9 modules</text>
+
+  {
+    stages.map((s, i) => (
+      <>
+        <rect class="dg-box" x="44" y={s.y} width="372" height="54" rx="4" />
+        <text class="dg-title" x="58" y={s.y + 23}>{s.l[0]}</text>
+        <text class="dg-sub" x="58" y={s.y + 41}>{s.l[1]}</text>
+        <rect class="dg-box" x="484" y={s.y} width="372" height="54" rx="4" />
+        <text class="dg-title" x="498" y={s.y + 23}>{s.r[0]}</text>
+        <text class="dg-sub" x="498" y={s.y + 41}>{s.r[1]}</text>
+        {i > 0 && (
+          <>
+            <path class="dg-flow" d={`M230 ${s.y - 16}V${s.y - 2}`} marker-end="url(#ls-arch-arrow)" />
+            <path class="dg-flow" d={`M670 ${s.y - 16}V${s.y - 2}`} marker-end="url(#ls-arch-arrow)" />
+          </>
+        )}
+      </>
+    ))
+  }
+
+  <!-- Cross-check -->
+  <path class="dg-flow" d="M230 468V520H298" marker-end="url(#ls-arch-arrow)"></path>
+  <path class="dg-flow" d="M670 468V520H602" marker-end="url(#ls-arch-arrow)"></path>
+  <rect class="dg-box dg-box--hi" x="300" y="494" width="300" height="56" rx="4"></rect>
+  <text class="dg-title" x="314" y="517">Cross-checker</text>
+  <text class="dg-sub" x="314" y="535">scripts/check_excel_exports.py · tolerances</text>
+  <path class="dg-flow" d="M450 550V574" marker-end="url(#ls-arch-arrow)"></path>
+  <rect class="dg-box" x="300" y="576" width="300" height="48" rx="4"></rect>
+  <text class="dg-title" x="314" y="597">crosscheck.json</text>
+  <text class="dg-sub" x="314" y="613">per scenario: PASS or list of mismatches</text>
+
+  <!-- Side channels -->
+  <rect class="dg-box dg-box--ext" x="622" y="570" width="248" height="54" rx="4"></rect>
+  <text class="dg-title" x="636" y="592">Workbook ⇄ source sync</text>
+  <text class="dg-sub" x="636" y="609">vba_source_sync.py · byte compare</text>
+  <path class="dg-flow dg-flow--dash" d="M800 480V568" marker-end="url(#ls-arch-arrow)" marker-start="url(#ls-arch-arrow)"></path>
+
+  <rect class="dg-box dg-box--ext" x="30" y="570" width="230" height="54" rx="4"></rect>
+  <text class="dg-title" x="44" y="592">Suite runner + tests</text>
+  <text class="dg-sub" x="44" y="609">latency = detection − truth</text>
+  <path class="dg-flow dg-flow--dash" d="M270 130H14V597H28" marker-end="url(#ls-arch-arrow)"></path>
+  <text class="dg-sub" x="30" y="124">truth is used here only ↓</text>
+</svg>
+</div>
+
+<div class="dg-mobile">
+  <svg viewBox={`0 0 360 ${M_H}`} style="min-width: 0" class="ls-m" role="img" aria-labelledby="ls-archm-title ls-archm-desc" xmlns="http://www.w3.org/2000/svg">
+    <title id="ls-archm-title">LongiSafe Lab architecture</title>
+    <desc id="ls-archm-desc">
+      Ten scenario configs feed a synthetic generator. It writes an observed-signal CSV and a separate fault-truth JSON that the monitors never read. The CSV is analysed twice, by a Python reference and
+      by an Excel/VBA workbook, each with strict import, validation gates and sustained monitors, KPIs and export. A cross-checker compares both sets of results. Side channels: a byte comparison of the
+      workbook's VBA with the source files, and the suite runner and tests, the only readers of fault truth.
+    </desc>
+    <defs>
+      <marker id="ls-archm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="dg-head" d="M0 0L8 4L0 8z"></path>
+      </marker>
+    </defs>
+
+    <rect class="dg-box" x="24" y="8" width="312" height="56" rx="4"></rect>
+    <text class="dg-title" x="38" y="31">10 scenario configs</text>
+    <text class="dg-sub" x="38" y="51">scenarios/configs/*.json</text>
+    <path class="dg-flow" d="M180 64V84" marker-end="url(#ls-archm-arrow)"></path>
+
+    <rect class="dg-box" x="24" y="86" width="312" height="56" rx="4"></rect>
+    <text class="dg-title" x="38" y="109">Synthetic generator</text>
+    <text class="dg-sub" x="38" y="129">model.simulate · seed 41</text>
+    <path class="dg-flow" d="M110 142V168" marker-end="url(#ls-archm-arrow)"></path>
+    <path class="dg-flow dg-flow--dash" d="M272 142V168" marker-end="url(#ls-archm-arrow)"></path>
+
+    <rect class="dg-box dg-box--hi" x="24" y="170" width="184" height="74" rx="4"></rect>
+    <text class="dg-title" x="38" y="193">Observed CSV</text>
+    <text class="dg-sub" x="38" y="213">data/synthetic/</text>
+    <text class="dg-sub" x="38" y="231">SI columns, no truth</text>
+
+    <rect class="dg-box dg-box--ext" x="220" y="170" width="116" height="74" rx="4"></rect>
+    <text class="dg-title" x="232" y="193">Fault truth</text>
+    <text class="dg-sub" x="232" y="213">never read</text>
+    <text class="dg-sub" x="232" y="231">by monitors</text>
+
+    <text class="dg-sub" x="38" y="272">one shared input, analysed twice</text>
+    <path class="dg-flow" d={`M116 244V254M116 280V${G1 - 3}`} marker-end="url(#ls-archm-arrow)"></path>
+    <path class="dg-flow" d={`M24 207H10V${G2 + 40}H22`} marker-end="url(#ls-archm-arrow)"></path>
+
+    {
+      [
+        { y: G1, name: 'PYTHON REFERENCE · stdlib only', rows: mPy },
+        { y: G2, name: 'EXCEL / VBA WORKBOOK · 9 modules', rows: mXl },
+      ].map((g) => (
+        <>
+          <rect class="dg-box dg-box--ext" x="24" y={g.y} width="312" height={groupH} rx="6" />
+          <text class="dg-sub ls-col" x="38" y={g.y + 20}>{g.name}</text>
+          {g.rows.map((r, i) => {
+            const y = g.y + 30 + i * (STAGE_H + STAGE_GAP);
+            return (
+              <>
+                <rect class="dg-box" x="36" y={y} width="288" height={STAGE_H} rx="4" />
+                <text class="dg-title" x="48" y={y + 22}>{r[0]}</text>
+                <text class="dg-sub" x="48" y={y + 42}>{r[1]}</text>
+                {i > 0 && <path class="dg-flow" d={`M180 ${y - STAGE_GAP}V${y - 1}`} marker-end="url(#ls-archm-arrow)" />}
+              </>
+            );
+          })}
+        </>
+      ))
+    }
+
+    <path class="dg-flow" d={`M336 ${G1 + groupH - 30}H350V${XC + 32}H338`} marker-end="url(#ls-archm-arrow)"></path>
+    <path class="dg-flow" d={`M180 ${G2 + groupH}V${XC - 2}`} marker-end="url(#ls-archm-arrow)"></path>
+    <rect class="dg-box dg-box--hi" x="24" y={XC} width="312" height="64" rx="4"></rect>
+    <text class="dg-title" x="38" y={XC + 25}>Cross-checker</text>
+    <text class="dg-sub" x="38" y={XC + 46}>check_excel_exports.py · tolerances</text>
+    <path class="dg-flow" d={`M180 ${XC + 64}V${XC + 88}`} marker-end="url(#ls-archm-arrow)"></path>
+    <rect class="dg-box" x="24" y={XC + 90} width="312" height="56" rx="4"></rect>
+    <text class="dg-title" x="38" y={XC + 113}>crosscheck.json</text>
+    <text class="dg-sub" x="38" y={XC + 133}>PASS or list of mismatches</text>
+
+    <text class="dg-sub ls-col" x="24" y={SIDE - 10}>SIDE CHANNELS</text>
+    <rect class="dg-box dg-box--ext" x="24" y={SIDE} width="312" height="56" rx="4"></rect>
+    <text class="dg-title" x="38" y={SIDE + 23}>Workbook ⇄ source sync</text>
+    <text class="dg-sub" x="38" y={SIDE + 43}>vba_source_sync.py · byte compare</text>
+    <rect class="dg-box dg-box--ext" x="24" y={SIDE + 66} width="312" height="56" rx="4"></rect>
+    <text class="dg-title" x="38" y={SIDE + 89}>Suite runner + tests</text>
+    <text class="dg-sub" x="38" y={SIDE + 109}>only reader of fault truth</text>
+  </svg>
+</div>
+
+
+<style>
+  .ls-m .dg-title {
+    font-size: 15px;
+  }
+  .ls-m .dg-sub {
+    font-size: 13.5px;
+  }
+  .ls-col {
+    letter-spacing: 0.06em;
+    fill: var(--text-2);
+  }
+</style>

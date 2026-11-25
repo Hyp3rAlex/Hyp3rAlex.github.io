@@ -1,0 +1,778 @@
+---
+import { getCollection, render } from 'astro:content';
+import type { GetStaticPaths } from 'astro';
+import Base from '../../layouts/Base.astro';
+import ProjectVisual from '../../components/projects/ProjectVisual.astro';
+import Figure from '../../components/case/Figure.astro';
+import Callout from '../../components/case/Callout.astro';
+import Brief from '../../components/case/Brief.astro';
+import TryIt from '../../components/case/TryIt.astro';
+import { CATEGORIES, KINDS } from '../../content.config';
+import { person, site } from '../../data/profile';
+import meta from '../../data/github-metadata.json';
+
+export const getStaticPaths = (async () => {
+  const all = (await getCollection('projects', (p) => !p.data.draft)).sort((a, b) => a.data.order - b.data.order);
+  return all.map((project, i) => ({
+    params: { slug: project.id },
+    props: { project, prev: all[(i - 1 + all.length) % all.length], next: all[(i + 1) % all.length] },
+  }));
+}) satisfies GetStaticPaths;
+
+const { project, prev, next } = Astro.props;
+const d = project.data;
+const { Content, headings } = await render(project);
+const toc = headings.filter((h) => h.depth === 2);
+const repoUrl = d.repo ? `https://github.com/${d.repo}` : undefined;
+const repoMeta = d.repo
+  ? (meta.repos as unknown as Record<string, { pushedAt?: string } | undefined>)[d.repo]
+  : undefined;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CreativeWork',
+  name: d.title,
+  description: d.tagline,
+  url: `${site.url}/projects/${project.id}/`,
+  author: { '@type': 'Person', name: person.name, url: site.url + '/' },
+  ...(repoUrl ? { codeRepository: repoUrl } : {}),
+};
+---
+
+<Base title={d.title} description={d.tagline} ogType="article" jsonLd={jsonLd}>
+  <article class="case" data-visual={d.visual}>
+    <header class="case-head">
+      <div class="wrap">
+        <nav class="crumbs mono" aria-label="Breadcrumb">
+          <a href="/projects/">Work</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{d.title}</span>
+        </nav>
+        <div class="head-grid">
+          <div>
+            <p class="label">
+              <b>{String(d.order).padStart(2, '0')}</b> / {CATEGORIES[d.category]} · {KINDS[d.kind]}
+            </p>
+            <h1>{d.title}</h1>
+            <p class="lede">{d.tagline}</p>
+            <div class="head-actions no-print">
+              {
+                repoUrl && (
+                  <a class="btn btn--primary" href={repoUrl} rel="noopener">
+                    Source on GitHub <span class="arrow" aria-hidden="true">↗</span>
+                  </a>
+                )
+              }
+              {toc.some((h) => h.slug === 'demo') && <a class="btn" href="#demo">Jump to demo <span class="arrow" aria-hidden="true">↓</span></a>}
+            </div>
+          </div>
+          <dl class="spec head-spec">
+            <dt>Role</dt>
+            <dd>{d.role}</dd>
+            {
+              d.context && (
+                <>
+                  <dt>Context</dt>
+                  <dd>{d.context}</dd>
+                </>
+              )
+            }
+            <dt>Period</dt>
+            <dd>{d.period}</dd>
+            <dt>Status</dt>
+            <dd>{d.status}</dd>
+            {
+              d.collaborators.length > 0 && (
+                <>
+                  <dt>Team</dt>
+                  <dd>
+                    {d.collaborators.map((c, i) => (
+                      <>
+                        {i > 0 && ', '}
+                        {c.url ? <a href={c.url} rel="noopener">{c.name}</a> : c.name}
+                      </>
+                    ))}
+                    {' '}and Alexander Yordanov
+                  </dd>
+                </>
+              )
+            }
+            {
+              d.repo && (
+                <>
+                  <dt>Repository</dt>
+                  <dd>
+                    <a href={repoUrl} rel="noopener">{d.repo}</a>
+                    {repoMeta?.pushedAt && <span class="dim"> · last push {repoMeta.pushedAt.slice(0, 10)}</span>}
+                  </dd>
+                </>
+              )
+            }
+            <dt>Evidence</dt>
+            <dd>Audited at revision <code>{d.audit.revision}</code> on {d.audit.date}</dd>
+          </dl>
+        </div>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div class="case-visual corner-marks">
+        <ProjectVisual visual={d.visual} />
+      </div>
+
+      <dl class="facts">
+        {
+          d.facts.map((f) => (
+            <div>
+              <dt>
+                {f.label}
+                {f.note && <span class="dim"> · {f.note}</span>}
+              </dt>
+              <dd>{f.value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <div class="case-body">
+        <aside class="toc no-print">
+          <nav class="toc-full" aria-label="On this page">
+            <p class="label">On this page</p>
+            <ol role="list">
+              {
+                toc.map((h, i) => (
+                  <li>
+                    <a href={`#${h.slug}`}>
+                      <span class="mono">{String(i + 1).padStart(2, '0')}</span>
+                      {h.text}
+                    </a>
+                  </li>
+                ))
+              }
+            </ol>
+          </nav>
+          {/* Phones: a collapsed contents list, so the overview is the first thing after the header. */}
+          <details class="toc-m">
+            <summary>On this page · {toc.length} sections</summary>
+            <nav aria-label="On this page, compact">
+              <ol role="list">
+                {toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}
+              </ol>
+            </nav>
+          </details>
+        </aside>
+
+        <div class="prose">
+          <Content components={{ Figure, Callout, Brief, TryIt }} />
+          {d.dataNote && <p class="data-note mono">Data provenance — {d.dataNote}</p>}
+        </div>
+      </div>
+    </div>
+
+    <nav class="pager" aria-label="More projects">
+      <div class="wrap pager-grid">
+        <a href={`/projects/${prev.id}/`} rel="prev">
+          <span class="label">← Previous</span>
+          <span class="pt">{prev.data.title}</span>
+        </a>
+        <a href="/projects/" class="all">
+          <span class="label">Index</span>
+          <span class="pt">All projects</span>
+        </a>
+        <a href={`/projects/${next.id}/`} rel="next" class="nx">
+          <span class="label">Next →</span>
+          <span class="pt">{next.data.title}</span>
+        </a>
+      </div>
+    </nav>
+  </article>
+</Base>
+
+<style>
+  .case-head {
+    padding-block: var(--s-6) var(--s-7);
+  }
+  .crumbs {
+    display: flex;
+    gap: var(--s-2);
+    margin-bottom: var(--s-7);
+  }
+  .crumbs a {
+    color: var(--text-2);
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+  }
+  .head-grid {
+    display: grid;
+    gap: var(--s-7);
+  }
+  .head-grid > * {
+    min-width: 0;
+  }
+  .case-head h1,
+  .case-head .lede {
+    overflow-wrap: anywhere;
+  }
+  .case-head h1 {
+    margin: var(--s-4) 0 var(--s-5);
+    font-size: clamp(2.75rem, 1.2rem + 7vw, 6.5rem);
+    letter-spacing: -0.05em;
+    line-height: 0.92;
+  }
+  .case-head .lede {
+    max-width: 38ch;
+  }
+  .head-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+    margin-top: var(--s-6);
+  }
+  .head-spec {
+    align-self: end;
+  }
+  .head-spec dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 64em) {
+    .head-grid {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      gap: var(--s-8);
+    }
+  }
+
+  .case-visual {
+    border: 1px solid var(--border);
+    aspect-ratio: 16 / 10;
+    max-height: 34rem;
+    width: 100%;
+  }
+  @media (min-width: 48em) {
+    .case-visual {
+      aspect-ratio: 21 / 9;
+    }
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .facts > div {
+    display: flex;
+    /* DOM order is term then value; the value is shown first. */
+    flex-direction: column-reverse;
+    justify-content: flex-end;
+    gap: var(--s-2);
+    padding: var(--s-5) var(--s-4) var(--s-5) 0;
+    border-top: 1px solid var(--border);
+  }
+  .facts dd {
+    margin: 0;
+    /* Figures are set in the body face: the display face's spurred numerals read as a glitch at this size. */
+    font-family: var(--font-body);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .facts dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  @media (min-width: 56em) {
+    .facts {
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+    }
+    .facts > div {
+      border-top: 0;
+      padding-left: var(--s-5);
+      border-left: 1px solid var(--border);
+    }
+    .facts > div:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+  }
+
+  .case-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-5);
+    padding-block: var(--s-6) var(--section);
+  }
+  .toc ol {
+    margin-top: var(--s-3);
+    border-top: 1px solid var(--border);
+  }
+  .toc-full {
+    display: none;
+  }
+  .toc-m {
+    border: 1px solid var(--border);
+    border-radius: var(--r-2);
+  }
+  .toc-m summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 var(--s-4);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .toc-m ol {
+    margin: 0;
+    padding: 0 var(--s-4);
+  }
+  .toc-m li a {
+    border-bottom: 0;
+    border-top: 1px solid var(--border);
+  }
+  .toc li a {
+    display: flex;
+    gap: var(--s-3);
+    align-items: baseline;
+    padding: var(--s-2) 0;
+    min-height: 2.5rem;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    text-decoration: none;
+  }
+  .toc li a:hover {
+    color: var(--text);
+  }
+  .toc .tags {
+    margin-top: var(--s-5);
+  }
+  @media (min-width: 68em) {
+    .case-body {
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: var(--s-8);
+    }
+    .toc-full {
+      display: block;
+    }
+    .toc-m {
+      display: none;
+    }
+    .toc {
+      position: sticky;
+      top: calc(var(--header-h) + var(--s-6));
+      align-self: start;
+      max-height: calc(100dvh - var(--header-h) - var(--s-8));
+      overflow-y: auto;
+    }
+  }
+
+  .data-note {
+    margin-top: var(--s-8);
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--border);
+    text-transform: none;
+    letter-spacing: 0.01em;
+    max-width: none;
+  }
+
+  .pager {
+    border-top: 1px solid var(--border);
+  }
+  .pager-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pager a {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    padding: var(--s-6) 0;
+    text-decoration: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .pager .pt {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 560;
+    letter-spacing: -0.03em;
+  }
+  .pager a:hover .pt {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+  }
+  @media (min-width: 52em) {
+    .pager-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .pager a {
+      border-bottom: 0;
+      padding-inline: var(--s-5);
+      border-left: 1px solid var(--border);
+    }
+    .pager a:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+    .pager .nx {
+      text-align: right;
+      align-items: flex-end;
+    }
+  }
+</style>
+
+<style is:global>
+  /* Case-study prose: authored in MDX, so styled globally under .prose */
+  .prose {
+    min-width: 0;
+    font-size: 1.0625rem;
+    line-height: 1.7;
+  }
+  .prose > * {
+    max-width: var(--measure);
+  }
+  .prose > * + * {
+    margin-top: var(--s-5);
+  }
+  .prose > h2 {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    margin-top: var(--s-9);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--border);
+    max-width: none;
+    font-size: var(--text-2xl);
+  }
+  .prose > h2:first-child,
+  .prose > .brief + h2 {
+    margin-top: 0;
+  }
+  /* Diagrams may ship a desktop and a vertical mobile drawing; exactly one is shown. */
+  .dg-mobile {
+    display: none;
+  }
+  @media (max-width: 47.99em) {
+    .dg-desktop:has(+ .dg-mobile),
+    .dg-desktop.has-mobile {
+      display: none;
+    }
+    .dg-mobile {
+      display: block;
+    }
+  }
+  .prose > h3 {
+    margin-top: var(--s-7);
+    font-size: var(--text-lg);
+  }
+  .prose > h2 + *,
+  .prose > h3 + * {
+    margin-top: var(--s-4);
+  }
+  .prose p,
+  .prose li {
+    color: var(--text-2);
+  }
+  .prose strong {
+    color: var(--text);
+  }
+  .prose > ul,
+  .prose > ol,
+  .prose > details ul,
+  .prose > details ol,
+  .prose .callout-body ul {
+    padding-left: 1.2em;
+  }
+  .prose > ul > li + li,
+  .prose > ol > li + li,
+  .prose > details li + li {
+    margin-top: var(--s-2);
+  }
+  .prose > ul > li::marker,
+  .prose > ol > li::marker,
+  .prose > details li::marker {
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+  }
+  /* Expandable reference material inside the prose column */
+  .prose > details {
+    border: 1px solid var(--border);
+    border-radius: var(--r-2);
+    background: var(--surface);
+  }
+  .prose > details > summary {
+    padding: var(--s-3) var(--s-4);
+    min-height: 2.75rem;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 550;
+    color: var(--text);
+  }
+  .prose > details[open] > summary {
+    border-bottom: 1px solid var(--border);
+  }
+  .prose > details > :not(summary) {
+    margin: var(--s-4);
+  }
+  .prose > pre,
+  .prose > .table-scroll,
+  .prose > figure,
+  .prose > .wide {
+    max-width: 54rem;
+  }
+  .prose > .full {
+    max-width: none;
+  }
+  .prose > pre {
+    margin-block: var(--s-5);
+  }
+  .prose blockquote {
+    padding-left: var(--s-5);
+    border-left: 2px solid var(--border-strong);
+    color: var(--text);
+  }
+  .prose a:not(.btn) {
+    color: var(--text);
+  }
+  /* A source reference like `engine/cache.py:12` */
+  .prose .src {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text-3);
+    letter-spacing: 0.01em;
+    overflow-wrap: anywhere;
+  }
+
+  /* ---------- Shared demo shell (used by every interactive demo) ---------- */
+  .demo {
+    max-width: none;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-3);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .demo-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-2) var(--s-4);
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--border);
+    background: var(--raised);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .demo-bar .badge {
+    padding: 0.15em 0.5em;
+    border: 1px solid var(--warn);
+    border-radius: var(--r-1);
+    color: var(--warn);
+  }
+  .demo-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--s-4) var(--s-5);
+    padding: var(--s-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .demo-controls .field {
+    display: grid;
+    gap: var(--s-1);
+    min-width: 0;
+  }
+  .demo-controls .field > label,
+  .demo-controls .field > .flabel,
+  .demo-controls legend {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 0;
+  }
+  .demo-controls fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  .demo-stage {
+    padding: var(--s-4);
+    min-width: 0;
+  }
+  .demo-stage svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .demo-readout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    border-top: 1px solid var(--border);
+  }
+  .demo-readout > div {
+    padding: var(--s-3) var(--s-4);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 0 -1px -1px 0;
+  }
+  .demo-readout dt,
+  .demo-readout .k {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .demo-readout dd,
+  .demo-readout .v {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-md);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+  .demo-foot {
+    padding: var(--s-3) var(--s-4);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-xs);
+    color: var(--text-3);
+    line-height: 1.6;
+  }
+  .demo details {
+    border-top: 1px solid var(--border);
+  }
+  .demo details > summary {
+    padding: var(--s-3) var(--s-4);
+    min-height: 2.75rem;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  .demo details .table-scroll {
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    max-height: 22rem;
+    overflow: auto;
+  }
+  .verdict {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .verdict[data-state='pass'] {
+    color: var(--ok);
+  }
+  .verdict[data-state='fail'] {
+    color: var(--fail);
+  }
+  .verdict[data-state='warn'] {
+    color: var(--warn);
+  }
+  .verdict[data-state='na'] {
+    color: var(--text-3);
+  }
+  /* Chart primitives shared by demo SVGs and diagrams */
+  .ch-axis {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+    fill: none;
+  }
+  .ch-grid {
+    stroke: var(--grid-line);
+    stroke-width: 1;
+  }
+  .ch-text {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    fill: var(--text-3);
+  }
+  .ch-line {
+    fill: none;
+    stroke: var(--text);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+  .ch-line--2 {
+    stroke: var(--info);
+  }
+  .ch-line--3 {
+    stroke: var(--warn);
+    stroke-dasharray: 7 3 2 3;
+  }
+  .ch-line--dash {
+    stroke-dasharray: 5 4;
+  }
+  /* Diagram primitives */
+  .dg-box {
+    fill: var(--surface);
+    stroke: var(--control);
+    stroke-width: 1;
+  }
+  .dg-box--ext {
+    stroke-dasharray: 4 3;
+    fill: none;
+  }
+  .dg-box--hi {
+    stroke: var(--text);
+  }
+  .dg-title {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--text);
+  }
+  .dg-sub {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    fill: var(--text-3);
+  }
+  .dg-flow {
+    fill: none;
+    stroke: var(--text-2);
+    stroke-width: 1.25;
+  }
+  .dg-flow--dash {
+    stroke-dasharray: 4 4;
+  }
+  .dg-head {
+    fill: var(--text-2);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .dg-flow--beam {
+      stroke-dasharray: 3 9;
+      animation: dg-beam 1.6s linear infinite;
+      animation-play-state: paused;
+    }
+    figure:hover .dg-flow--beam,
+    figure:focus-within .dg-flow--beam {
+      animation-play-state: running;
+    }
+  }
+  @keyframes dg-beam {
+    to {
+      stroke-dashoffset: -24;
+    }
+  }
+</style>

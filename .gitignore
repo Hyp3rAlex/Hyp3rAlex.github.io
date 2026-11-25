@@ -1,0 +1,15 @@
+dist/
+.astro/
+node_modules/
+npm-debug.log*
+.env
+.env.*
+.DS_Store
+test-results/
+playwright-report/
+*.Zone.Identifier
+
+# Stray Windows-style temp dirs created by tools run under WSL
+C:*
+__pycache__/
+*.pyc

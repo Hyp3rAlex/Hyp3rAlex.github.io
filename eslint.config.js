@@ -1,0 +1,21 @@
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import astro from 'eslint-plugin-astro';
+
+export default [
+  { ignores: ['dist/', '.astro/', 'node_modules/', 'playwright-report/', 'test-results/', 'docs/design/concepts/'] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  ...astro.configs.recommended,
+  {
+    languageOptions: {
+      globals: {
+        window: 'readonly', document: 'readonly', navigator: 'readonly', location: 'readonly', history: 'readonly',
+        localStorage: 'readonly', matchMedia: 'readonly', customElements: 'readonly', HTMLElement: 'readonly',
+        requestAnimationFrame: 'readonly', cancelAnimationFrame: 'readonly', setTimeout: 'readonly', clearTimeout: 'readonly',
+        console: 'readonly', process: 'readonly', URL: 'readonly', fetch: 'readonly', AbortSignal: 'readonly',
+        addEventListener: 'readonly', IntersectionObserver: 'readonly',
+      },
+    },
+  },
+];

@@ -1,0 +1,280 @@
+---
+title: BMW Motorrad Ride Planner
+tagline: Team Lead of a three-person hackathon team that built a ride planner routing motorcyclists by road quality, not arrival time. I developed its caching, spatial indexing and tests.
+summary: As Team Lead I led the three-person hackathon team that built a ride planner routing motorcyclists over twisty, scenic roads with a hand-written Dijkstra. I developed its caching, spatial indexing and automated tests.
+category: engineering
+alsoIn: [software]
+kind: hackathon
+team: true
+role: Team Lead · caching, spatial indexing and automated tests
+collaborators:
+  - name: Krishaanth
+  - name: Nikolay
+context: BMW Motorrad track (“FIND YOUR THRILL — Route Challenge”) at the TUM.ai EHL hackathon in Zurich
+period: September 2026
+status: Hackathon prototype, pitched at the event
+stack: [Python, FastAPI, Dijkstra, OpenStreetMap, Leaflet / MapLibre GL, unittest]
+facts:
+  - value: 'Team Lead'
+    label: Led a three-person hackathon team
+  - value: 'Dijkstra'
+    label: Hand-written routing over OpenStreetMap data
+  - value: '27'
+    label: Automated tests in the repository
+    note: counted, not re-run
+  - value: '1 weekend'
+    label: From challenge brief to pitched prototype
+visual: rideplanner
+order: 4
+featured: true
+audit: { revision: dde641f, date: '2026-11-25' }
+dataNote: The demo graph is synthetic and hand-authored for this page; it is not map data. No challenge ride data, no OpenStreetMap extract and no code from the hackathon repository is reproduced in the demo.
+---
+
+import RideplannerArchitecture from '../../components/diagrams/RideplannerArchitecture.astro';
+import RideplannerDemo from '../../components/interactive/RideplannerDemo.astro';
+
+<Brief
+  problem="Navigation apps optimise for arrival time. A motorcyclist on a leisure ride wants the roads worth riding, within their own skill, and wants to know what the detour costs."
+  solution="A hackathon prototype that routes over OpenStreetMap roads with a hand-written Dijkstra and a cost function trading travel time against scenery, curvature and risk, served by FastAPI to a map front end."
+  role="Team Lead — BMW Motorrad Ride Planner"
+  contribution="I led the three-person team and developed the performance layer: disk caching, an exact spatial index, edge-cost memoisation, the data import and warm-up path, and automated tests."
+  outcomes={[
+    'Team: a working ride planner built in one weekend and pitched at the TUM.ai EHL hackathon in Zurich',
+    'Team: routing engine, cost function and scenic model built without a routing library',
+    'Mine: signature-keyed disk cache and exact spatial index, merged into the main branch',
+    'Mine: automated tests for the cache, the index, start-up and the HTTP routes',
+    'Start-up 10.38 s → 1.67 s with a warm cache, as recorded in the repository (not re-measured)',
+  ]}
+  tech={['Python', 'FastAPI', 'Dijkstra', 'OpenStreetMap', 'Open-Meteo', 'Leaflet / MapLibre GL']}
+/>
+
+## Summary
+
+Navigation software answers “how do I get there soonest”. A motorcyclist on a free afternoon is asking something else: which roads are worth riding, and how much extra time they cost. The BMW Motorrad track at the TUM.ai EHL hackathon in Zurich set that as the challenge. I led a team of three that built and pitched a working prototype for it over one weekend in September 2026.
+
+The prototype routes over an OpenStreetMap road graph with a hand-written Dijkstra. Each road segment costs its travel time multiplied by a factor that grows when the road is less scenic, riskier or a long straight; roads beyond the rider's demonstrated lean capability are removed before the search starts. A FastAPI service exposes the engine, weather comes from Open-Meteo, and the front end is three static pages in plain JavaScript with Leaflet and MapLibre GL.
+
+Alongside leading the team, I developed the layer that made the demo responsive: a disk cache for everything derived from input files, an exact spatial index, memoised edge costs in the search loop, the data import and warm-up path, and automated tests. My teammates Krishaanth and Nikolay implemented the routing engine, the cost function, the scenic model and the user interface.
+
+<Callout kind="team" title="Team project">
+  A hackathon challenge set by BMW Motorrad, built by a team of three. It is an independent prototype, not a BMW product, and this page implies no affiliation with BMW.
+</Callout>
+
+## Architecture
+
+<Figure n="1" caption="Components of the prototype. Parts marked AY are the ones I developed; unmarked parts were implemented by my teammates. Dashed boxes are external services or data sources." source="Derived from the source at dde641f." wide>
+  <RideplannerArchitecture />
+</Figure>
+
+1. **Offline preparation.** Scripts fetch the road network for one bounding box from OpenStreetMap through the Overpass API. The extract is committed as a fixture, so the service starts without network access. Ways are split at junctions into short segments.
+2. **Rider context.** The challenge provided recorded ride data, which the prototype used for rider-preference context: how demanding a road is, and what a given rider has shown they are comfortable with. That data is not in the repository and none of it is shown on this page.
+3. **Engine.** Three routers share one idea: plain Dijkstra on Python's `heapq`, with the edge cost supplied by a scoring object. There is no routing library in the dependency list.
+4. **Weather.** Open-Meteo forecasts feed two things: a risk term in the cost, and a per-hour “is this a good time to ride” score. Every forecast request goes through the cache.
+5. **API and UI.** The same engine is served by a FastAPI app and by a dependency-free standard-library server. The pages request routes as JSON and draw them with Leaflet or MapLibre GL.
+
+## Engineering decisions
+
+### Preferences multiply travel time (team design)
+
+The cost of a segment in the team's segment router has this structure. It is shown simplified: the traffic term is left out and the two straight-road terms are folded into one.
+
+<p class="src">structure of engine/scoring.py:343-367 @ dde641f, simplified</p>
+
+```text
+cost = time × ( 1 + α · (1 − scenic)
+                  + β · risk
+                  + h · highway[class]
+                  + s · straightness )
+       + junction delay
+```
+
+`α` is the one dial a rider needs: how much extra time they will trade for a better road. `β` weights risk, which includes the weather. `h` and `s` are off by default and switched on by one planning mode to push routes off major roads and long straights. The junction delay is added outside the bracket because it is real time, not taste.
+
+The alternative is the obvious one: subtract a bonus for nice roads. That can produce negative edge costs, and Dijkstra is no longer correct with those. Because every term in the bracket is zero or positive, the cost of a segment is never below its travel time, so the plain algorithm stays exact and no road is ever “free”. With `α = 0`, `β = 0` and the penalties off, the cost reduces to travel time plus the junction delay, which is the baseline the scenic routes are compared against. In the repository `β` defaults to 1, so risk still counts unless it is switched off.
+
+The routers are written by hand on Python's `heapq`; the dependency list contains no routing engine. A routing engine brings its own graph format and cost model, whereas a short search over a dictionary of segments keeps the cost function a single method that can be changed and inspected directly.
+
+The weak spot is the weights. The scenic score is a hand-weighted sum of road class, curvature, elevation, relief, forest and water, and each constant is a guess that was never checked against rider feedback. Nothing is learned from data. The cost function and its implementation in `engine/scoring.py` are Krishaanth's work.
+
+### Capability is a filter, not a term in the sum
+
+A scenic bonus must never talk the planner into a road the rider cannot handle. The team therefore made capability a hard gate: a segment whose demand exceeds the rider's ceiling is dropped before costs are computed, and wet weather lowers the ceiling. No slider setting can route through an excluded segment.
+
+My first routing change took the same hard-constraint approach to motorways. Scenic routes ran with motorways forbidden, and only if no motorway-free path existed did the search run again with them allowed, labelling the result “motorway required”.
+
+<p class="src">engine/router.py:358-368 @ dde641f</p>
+
+```python
+    def scenic_one(alpha: float):
+        # First attempt: motorways are completely forbidden.
+        route = one(alpha, avoid_motorways=True)
+        if route is not None:
+            return route
+
+        # Fallback: allow motorways only when no motorway-free route exists.
+        route = one(alpha, avoid_motorways=False)
+        if route is not None:
+            route["motorway_fallback"] = True
+        return route
+```
+
+The team then replaced it with a soft penalty, the `h · highway[class]` term above, and the hard block is no longer called at the audited revision. The soft version is the better fit: a short motorway stretch out of town is sometimes the right way to reach good roads, and a penalty can express that where a ban cannot. The demo below lets you compare the two.
+
+### A disk cache keyed by the inputs' signature
+
+Before this change the service re-derived everything from raw files on every launch: segmenting the road extract, computing curvature, building rider profiles.
+
+I developed `engine/cache.py`, a small cache for derived JSON. A cached value is valid only if the signature stored with it matches the current signature of its inputs, where the signature hashes a version string plus each input's path, size and modification time.
+
+<p class="src">engine/cache.py:26-32, 61-73 @ dde641f</p>
+
+```python
+def signature(paths, version):
+    records = []
+    for filename in sorted(map(str, paths)):
+        path = Path(filename).resolve()
+        stat = path.stat()
+        records.append((str(path), stat.st_size, stat.st_mtime_ns))
+    return hashlib.sha256(json.dumps([version, records]).encode()).hexdigest()
+
+
+def derived_json(name, fingerprint, build):
+    path = CACHE_DIR / name
+    with lock_for(path):
+        cached = read_json(path)
+        if (isinstance(cached, dict) and cached.get("signature") == fingerprint
+                and "value" in cached):
+            return cached["value"]
+        value = build()
+        try:
+            write_json(path, {"signature": fingerprint, "value": value})
+        except OSError:
+            pass  # A read-only install remains usable, just without disk caching.
+        return value
+```
+
+The code does three things beyond the lookup. Writes go to a temporary file in the same directory and are moved into place with `os.replace`, so a reader never sees half-written JSON. A lock per cache key means two simultaneous requests build a value once, not twice. A failed write is swallowed, so a read-only install still works, only slower.
+
+Weather uses the same module with different rules. A forecast younger than its TTL (300 s for current conditions, 900 s for the hourly forecast) is served without touching the network. After a failed request there is a 60-second cooldown before the next attempt, and older data is returned marked `stale` and is never relabelled as live.
+
+The trade-off is in the signature. Size and modification time are cheap to read, but they are not a content hash: a file rewritten with the same size and timestamp would not invalidate its cache. Values memoised inside the running process also survive until restart.
+
+### An exact index and memoised edge costs in the search loop
+
+Snapping a clicked point to the nearest graph node was a linear scan over every node. I developed `engine/spatial.py`, a bounding-box tree that splits on the wider axis and searches with branch-and-bound.
+
+<p class="src">engine/spatial.py:42-56 @ dde641f</p>
+
+```python
+        def visit(node):
+            nonlocal best_d, best_order, best_key
+            if node is None or bound(node) > best_d:
+                return
+            _, items, left, right = node
+            if items is not None:
+                for nlat, nlon, order, key in items:
+                    distance = (nlat - lat) ** 2 + ((nlon - lon) * scale) ** 2
+                    if (distance, order) < (best_d, best_order):
+                        best_d, best_order, best_key = distance, order, key
+            else:
+                if bound(left) > bound(right):
+                    left, right = right, left
+                visit(left)
+                visit(right)
+```
+
+The index is exact. Boxes only prune candidates that cannot win; the final comparison is the same distance as the full scan, and ties are broken by original insertion order. The routes returned after the change are therefore the routes returned before it, which is what lets the tests compare against stored outputs. An approximate index would not allow that comparison.
+
+The second change is inside the route search. One request runs Dijkstra several times (out, back, alternatives), and each run recomputed the cost and the exclusion check for every segment it touched. The costs depend only on the request's preferences, so they are computed once and kept for the lifetime of the request:
+
+<p class="src">engine/cell_osm_router.py:263-273 @ dde641f</p>
+
+```python
+        # A RoadCost belongs to ONE request/profile/weather snapshot. Reuse
+        # exact results across its many Dijkstra legs, never between riders.
+        self._routing_terms = {}
+
+    def routing_terms(self, seg: dict, alpha: float):
+        terms = self._routing_terms.setdefault(alpha, {})
+        sid = seg["seg_id"]
+        if sid not in terms:
+            terms[sid] = (None if self.excluded(seg) else
+                          (self.edge_cost(seg, alpha), self.seconds(seg)))
+        return terms[sid]
+```
+
+The scope is narrow. The memo lives on an object created per request, so one rider's costs cannot leak into another's. The price is that nothing is shared between requests, and the search itself is still pure Python over the whole graph. This change optimises the loop; the algorithm and the cost design are unchanged and are Krishaanth's.
+
+## Demo
+
+<TryIt
+  steps={[
+    'Drag <b>Scenic weight α</b> down to 0, then slowly back up. The preferred route leaves the motorway at 1.4, takes the lake road at 2.7 and the mountain pass at 4.5.',
+    'Set α to 1.0 and tick <b>Avoid motorways</b>: the route moves to the primary road. Swap it for <b>Penalise major roads</b> to see the soft version choose the lake road.',
+    'Press <b>Reset</b>, then lower <b>Risk aversion β</b> to 0 and compare <b>Time</b> and <b>Mean scenic</b>: the route switches to the riskier pass.',
+  ]}
+/>
+
+<div class="full">
+  <RideplannerDemo />
+</div>
+
+This is a TypeScript re-implementation of the scoring principle, written from the formula for this page. It runs on a synthetic graph of 21 nodes and 35 edges that I drew by hand: a motorway, a primary road, a lake road and a mountain pass between the same two towns. It contains no map and no ride data, and it is not the hackathon code.
+
+Three more things to try. Tick **Penalise straight roads** at `α = 1` and the route jumps straight to the pass. Choose `S`, the motorway service area, as the destination with motorways excluded: no motorway-free route exists, so the planner falls back and says so. Drag a slider back to a value you already visited and the “reused” count goes up, because edge costs are kept per preference signature, the same idea as the request-local memo above. The rider-capability gate of the original is not part of the demo.
+
+## Validation
+
+**Re-run for this page, 25 Nov 2026.** The TypeScript re-implementation is covered by unit tests, all passing. They check that `α = 0` with no penalties returns the minimum-time path, and that Dijkstra agrees with a brute-force enumeration of every simple path for 63 preference sets on three pairs of endpoints. They also check the expected route at each `α` range, that an excluded edge is never returned, that an unreachable target yields no route, and that memoised and fresh planners return identical results. These tests cover the code on this page, not the hackathon code.
+
+**Reported by the repository, not re-run.** At revision `dde641f` the repository contains 27 `unittest` methods, counted by reading the files. Sixteen are mine: `tests/test_performance.py` (13) and `tests/test_presentation_http.py` (3). They cover the index against a full scan including ties, cache invalidation, weather cache freshness and cooldown, single-flight start-up under concurrent requests, and a comparison of complete route responses with the outputs of the unoptimised version.
+
+Krishaanth checked the index independently before merging it: his merge commit (`ef3b4cd`) records a brute-force sweep on 153 points with zero mismatches.
+
+<Callout kind="note" title="Timings recorded in the repository">
+  From the repository's `PERFORMANCE.md`, measured at the time on sample requests with the committed road extract and not re-measured for this page: start-up 10.38 s → 1.67 s with a warm disk cache; three sample route requests 6.09 s → 1.56 s, 8.22 s → 1.15 s and 34.52 s → 3.44 s, with byte-identical route responses before and after.
+</Callout>
+
+## My contribution
+
+### Leadership
+
+I was the Team Lead of the three-person team. We built a working prototype in one weekend and pitched it at the event on 13 September 2026.
+
+### My technical contributions
+
+- **Caching.** `engine/cache.py`: signature-keyed derived cache, atomic writes, per-key locks, and the weather cache with TTL, failure cooldown and explicit stale labelling.
+- **Spatial indexing.** `engine/spatial.py`, used for node snapping and for attaching points of interest to roads.
+- **Edge-cost memoisation.** Prebuilt arcs and request-local memoised costs in the road router's Dijkstra loop.
+- **Data import and warm-up.** `engine/ride_data.py`, which resolves data paths with explicit errors instead of a silent fallback; command-line options for the import script; a `--warmup` flag and single-flight initialisation for the demo server.
+- **Automated tests.** Tests for the cache, the index, start-up and the HTTP routes, plus a benchmark script and `PERFORMANCE.md`.
+
+### Team achievements
+
+Together we delivered a ride planner that turns one preference dial into a route a rider can inspect and compare with the fastest one.
+
+- **Krishaanth** implemented the cost function, the scenic score, the three Dijkstra routers, the round-trip and alternatives logic, OpenStreetMap ingestion and the weather scoring rules.
+- **Nikolay**, with Krishaanth, built the scenic point-of-interest planner, the rider profiles and most of the ride page.
+
+The repository history shows AI coding tools in the team's workflow — an assistant instruction file and session-checkpoint trailers on commits — and my own commits were developed with an AI coding assistant as well.
+
+## Limitations
+
+- **Hand-tuned everywhere.** Every weight in the scenic and risk scores is a guess. There is no ground truth and no validation against what riders actually prefer. Three scenic terms are wired in but weighted zero.
+- **Hard-coded assumptions.** Residential and service roads are left out of the graph, so a start snaps to the nearest larger road, and the time zone is fixed at UTC+2.
+- **One region.** The graph covers a single bounding box south of Munich. Requests outside it are rejected, and a few location-specific special cases are hard-coded into the cost.
+- **No turn model.** There is no turn-expanded graph. U-turns are prevented only by refusing to re-enter the previous segment, and the junction delay is a constant prior charged on every step, not only on real turns.
+- **Speed.** Dijkstra runs in pure Python over the whole graph. The caching work removed repeated preparation, not the cost of the search; some endpoints were still slow afterwards.
+- **Cache invalidation.** Signatures use size and modification time, not content. In-process memoisation needs a restart after data is rebuilt.
+- **Tests.** Several of the tests compare against stored outputs tied to committed fixtures, which detects change but does not prove correctness. There is no CI.
+- **Prototype hygiene.** Dependencies are unpinned, front-end libraries load from a CDN, there is no licence file and no deployment. It ran locally for a pitch.
+- **Weather is coarse.** One forecast modulates risk and the capability ceiling for the whole route; it does not vary along the route or over the duration of the ride.
+
+## What I would do next
+
+- Replace the mtime signature with a content hash for small inputs, and give the in-process caches the same signature so a rebuild does not need a restart.
+- Add A* or bidirectional search with a travel-time lower bound. The multiplicative cost makes this straightforward, because time is an admissible heuristic when every multiplier is at least one.
+- Build a turn-aware graph and measure junction delays instead of assuming them.
+- Fit the weights to revealed preference instead of choosing them by hand, and hold out rides to test whether the fitted routes are the ones riders choose.
+- Set up CI that runs the unit tests on a clean checkout, and pin the dependencies.

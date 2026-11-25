@@ -1,0 +1,54 @@
+---
+import Base from '../layouts/Base.astro';
+import { nav } from '../data/profile';
+---
+
+<Base title="Page not found" description="This page does not exist." noindex>
+  <section class="wrap nf">
+    <p class="label"><b>404</b> / Not found</p>
+    <h1>Nothing at this address.</h1>
+    <p class="lede">The link may be outdated or mistyped. These all exist:</p>
+    <ul class="links" role="list">
+      <li><a href="/"><span class="mono">00</span>Home</a></li>
+      {nav.map((n, i) => <li><a href={n.href}><span class="mono">{String(i + 1).padStart(2, '0')}</span>{n.label}</a></li>)}
+      <li><a href="/resume/"><span class="mono">05</span>CV</a></li>
+    </ul>
+  </section>
+</Base>
+
+<style>
+  .nf {
+    padding-block: clamp(3rem, 2rem + 8vw, 8rem) var(--section);
+  }
+  h1 {
+    margin: var(--s-4) 0 var(--s-5);
+    font-size: clamp(2.75rem, 1rem + 8vw, 7rem);
+    letter-spacing: -0.05em;
+    line-height: 0.92;
+    max-width: 12ch;
+  }
+  .links {
+    margin-top: var(--s-7);
+    max-width: 36rem;
+    border-top: 1px solid var(--border);
+  }
+  .links a {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-4);
+    padding: var(--s-3) 0;
+    min-height: 3rem;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 560;
+    letter-spacing: -0.03em;
+    text-decoration: none;
+  }
+  .links a:hover {
+    padding-left: var(--s-2);
+  }
+  .links a {
+    transition: padding var(--t-component) var(--ease-out);
+  }
+</style>

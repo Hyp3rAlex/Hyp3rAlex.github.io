@@ -1,0 +1,68 @@
+---
+/** Guided starting point shown directly above an interactive demo. Steps must match the demo's real controls. */
+interface Props {
+  steps: string[];
+  title?: string;
+}
+const { steps, title = 'Try it yourself' } = Astro.props;
+---
+
+<aside class="tryit full" aria-label={title}>
+  <p class="mono t">{title}</p>
+  <ol>
+    {steps.map((s) => <li set:html={s} />)}
+  </ol>
+</aside>
+
+<style>
+  .tryit {
+    display: grid;
+    gap: var(--s-3) var(--s-6);
+    padding: var(--s-4) var(--s-5);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--text);
+    background: var(--surface);
+  }
+  .t {
+    color: var(--text);
+  }
+  ol {
+    display: grid;
+    gap: var(--s-2) var(--s-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+  li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 2.1em;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--text-2);
+  }
+  li::before {
+    content: counter(step, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 0.1em;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text);
+  }
+  li :global(b),
+  li :global(strong) {
+    color: var(--text);
+    font-weight: 600;
+  }
+  @media (min-width: 60em) {
+    .tryit {
+      grid-template-columns: 9rem minmax(0, 1fr);
+      align-items: start;
+    }
+    ol {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+</style>

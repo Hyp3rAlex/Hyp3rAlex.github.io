@@ -1,0 +1,377 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { person, site, education, experience, languages, interests, educationSummary, leadership } from '../data/profile';
+import { capabilities } from '../data/capabilities';
+
+const projects = (await getCollection('projects', (p) => !p.data.draft)).sort((a, b) => a.data.order - b.data.order);
+const titleOf = Object.fromEntries(projects.map((p) => [p.id, p.data.title]));
+
+// Sort keys (YYYY-MM) for the timeline; projects default to their authored order.
+const projectDate: Record<string, string> = {
+  'longisafe-lab': '2026-11',
+  'infraflow-mission-control': '2026-11',
+  'tacto-negotiation-arena': '2026-10',
+  'bmw-ride-planner': '2026-09',
+  'demographics-service': '2026-01',
+};
+const timeline = [
+  { key: '2026-10', when: 'Oct 2026', what: 'Started B.Sc. Mechanical Engineering at TUM, in parallel', kind: 'Education', href: '' },
+  { key: '2026-06', when: 'Jun–Oct 2026', what: 'Internship at DIETL Feinmechanik, Munich — six weeks in two periods', kind: 'Industry', href: '' },
+  { key: '2025-10', when: 'Oct 2025', what: 'Started B.Sc. Information Systems at TUM', kind: 'Education', href: '' },
+  ...projects
+    .filter((p) => p.data.kind !== 'meta')
+    .map((p) => ({
+      key: projectDate[p.id] ?? '0000-00',
+      when: p.data.period,
+      what: p.data.title,
+      kind: p.data.team ? 'Team Lead · hackathon' : 'Project',
+      href: `/projects/${p.id}/`,
+    })),
+].sort((a, b) => b.key.localeCompare(a.key));
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfilePage',
+  mainEntity: {
+    '@type': 'Person',
+    name: person.name,
+    url: site.url + '/',
+    address: { '@type': 'PostalAddress', addressLocality: 'Munich', addressCountry: 'DE' },
+    affiliation: { '@type': 'CollegeOrUniversity', name: 'Technical University of Munich' },
+    knowsLanguage: ['en', 'de', 'bg'],
+    sameAs: [person.github, person.linkedin],
+  },
+};
+---
+
+<Base
+  title="About"
+  description="Alexander Yordanov studies Information Systems and Mechanical Engineering in parallel at TUM. Education, industrial experience, technical focus and languages."
+  ogType="profile"
+  jsonLd={jsonLd}
+>
+  <section class="wrap page-head">
+    <p class="label">About</p>
+    <h1>Software, with one foot in the workshop.</h1>
+    <div class="intro">
+      <p class="lede">
+        I'm Alexander, a student at the Technical University of Munich. I study Information Systems and Mechanical
+        Engineering as two separate bachelor's programmes at the same time.
+      </p>
+      <div class="stack prose-measure">
+        <p class="muted">
+          The combination is deliberate. I like software best when it has to answer to something outside itself: a
+          vehicle model that must stay physically plausible, a measurement that either is or is not within tolerance, a
+          data pipeline whose output someone will base a decision on.
+        </p>
+        <p class="muted">
+          Most of what I have built so far is backend and data work in Java and Python — services, ingestion,
+          validation, rule-based decision logic — plus engineering tooling where the hard part is knowing whether a
+          result can be trusted. I try to document what I verified and what I did not; the case studies on this site
+          follow that rule.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="edu-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="label">Education</p>
+        <h2 id="edu-h">Technical University of Munich</h2>
+        <p>{educationSummary} Both are in progress.</p>
+      </header>
+      <ol class="ledger" role="list">
+        {
+          education.map((e) => (
+            <li>
+              <p class="mono when">{e.since} — present</p>
+              <div>
+                <h3>{e.degree}</h3>
+                <p class="muted"><span lang="de">{e.degreeDe}</span> · {e.note}</p>
+                <p class="small dim">Coursework in: {e.coursework.join(' · ')}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="exp-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="label">Industrial experience</p>
+        <h2 id="exp-h">Precision manufacturing, from the inside</h2>
+        <p>An internship on the shop floor — exposure to how parts are made and measured, not a software role.</p>
+      </header>
+      <ol class="ledger" role="list">
+        {
+          experience.map((x) => (
+            <li>
+              <p class="mono when">{x.period}<br />{x.duration}</p>
+              <div>
+                <h3>{x.org}</h3>
+                <p class="muted">{x.role} · {x.place}</p>
+                <ul class="points">
+                  {x.points.map((pt) => <li>{pt}</li>)}
+                </ul>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="lead-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="label">Leadership</p>
+        <h2 id="lead-h">Team Lead of two hackathon teams</h2>
+        <p>Both in 2026, both teams of three, both with hands-on technical work alongside the lead role.</p>
+      </header>
+      <ol class="ledger" role="list">
+        {
+          leadership.map((l) => (
+            <li>
+              <p class="mono when">{l.context.split(' · ')[1]}</p>
+              <div>
+                <h3>{l.title} — <a href={`/projects/${l.projectId}/`}>{l.project}</a></h3>
+                <p class="muted">{l.line}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="focus-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <p class="label">Technical focus</p>
+        <h2 id="focus-h">What I work with</h2>
+        <p>Grouped by where I have actually used it. Each line links to the project that backs it up.</p>
+      </header>
+      <div class="focus-grid">
+        {
+          capabilities.map((c) => (
+            <div>
+              <h3>{c.title}</h3>
+              <ul role="list">
+                {c.items.map((item) => (
+                  <li>
+                    {item.text}
+                    {item.evidence.filter((id) => titleOf[id]).length > 0 && (
+                      <span class="ev mono">
+                        {item.evidence.filter((id) => titleOf[id]).map((id) => <a href={`/projects/${id}/`}>{titleOf[id]}</a>)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="more-h">
+    <div class="wrap two">
+      <div>
+        <p class="label">Languages</p>
+        <h2 id="more-h" class="visually-hidden">Languages, interests and timeline</h2>
+        <dl class="spec">
+          {
+            languages.map((l) => (
+              <>
+                <dt>{l.name}</dt>
+                <dd>{l.level}</dd>
+              </>
+            ))
+          }
+        </dl>
+        <p class="label interests-label">Interests</p>
+        <ul class="tags">
+          {interests.map((i) => <li class="tag">{i}</li>)}
+        </ul>
+      </div>
+      <div>
+        <p class="label">Timeline</p>
+        <ol class="timeline" role="list">
+          {
+            timeline.map((t) => (
+              <li>
+                <span class="mono">{t.when}</span>
+                <span>
+                  {t.href ? <a href={t.href}>{t.what}</a> : t.what}
+                  <span class="dim"> · {t.kind}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap end">
+      <p class="lede">{person.seeking}</p>
+      <div class="actions">
+        <a class="btn btn--primary" href="/contact/">Get in touch</a>
+        <a class="btn" href="/projects/">See the work</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-head {
+    padding-block: clamp(3rem, 2rem + 5vw, 6rem) var(--s-8);
+  }
+  .page-head h1 {
+    margin: var(--s-4) 0 var(--s-7);
+    max-width: 14ch;
+    font-size: clamp(2.75rem, 1rem + 7.5vw, 6.5rem);
+    letter-spacing: -0.05em;
+    line-height: 0.94;
+  }
+  .intro {
+    display: grid;
+    gap: var(--s-6);
+  }
+  .intro .lede {
+    max-width: 36ch;
+    color: var(--text);
+  }
+  @media (min-width: 60em) {
+    .intro {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+      gap: var(--s-8);
+    }
+  }
+  .ledger {
+    border-top: 1px solid var(--border);
+  }
+  .ledger > li {
+    display: grid;
+    gap: var(--s-3);
+    padding: var(--s-6) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ledger h3 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--s-1);
+  }
+  .ledger .small {
+    margin-top: var(--s-3);
+    font-size: var(--text-sm);
+  }
+  .when {
+    color: var(--text-2);
+  }
+  .points {
+    margin-top: var(--s-4);
+    padding-left: 1.1em;
+    color: var(--text-2);
+    max-width: 62ch;
+  }
+  .points li + li {
+    margin-top: var(--s-2);
+  }
+  .points li::marker {
+    color: var(--text-3);
+  }
+  @media (min-width: 52em) {
+    .ledger > li {
+      grid-template-columns: 16rem minmax(0, 1fr);
+      gap: var(--s-6);
+    }
+    .when {
+      padding-top: 0.45em;
+    }
+  }
+  .focus-grid {
+    display: grid;
+    gap: var(--s-7) var(--s-7);
+  }
+  .focus-grid h3 {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-3);
+    padding-bottom: var(--s-3);
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .focus-grid li {
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  .focus-grid .ev {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-3);
+    margin-top: 2px;
+    font-size: var(--text-2xs);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+  .focus-grid .ev a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    color: var(--text-3);
+  }
+  @media (min-width: 48em) {
+    .focus-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .two {
+    display: grid;
+    gap: var(--s-8);
+  }
+  .two .label {
+    margin-bottom: var(--s-4);
+  }
+  .interests-label {
+    margin-top: var(--s-7);
+  }
+  .timeline {
+    border-top: 1px solid var(--border);
+  }
+  .timeline li {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    gap: var(--s-4);
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
+  }
+  .timeline .mono {
+    padding-top: 0.2em;
+  }
+  @media (min-width: 60em) {
+    .two {
+      grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    }
+  }
+  .end {
+    display: grid;
+    gap: var(--s-5);
+  }
+  .end .lede {
+    max-width: 40ch;
+    color: var(--text);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+</style>

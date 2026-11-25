@@ -1,0 +1,499 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import CvActions from '../components/recruiter/CvActions.astro';
+import { person, education, experience, languages, focusAreas, leadership } from '../data/profile';
+import { KINDS } from '../content.config';
+import { loadCvs } from '../lib/cv';
+
+const projects = await getCollection('projects', (p) => !p.data.draft && p.data.kind !== 'meta');
+const byId = Object.fromEntries(projects.map((p) => [p.id, p]));
+const hasDemo = (id: string) => byId[id]?.body?.includes('## Demo');
+const hasCvs = loadCvs().length > 0;
+---
+
+<Base
+  title="Recruiter brief"
+  description="Candidate brief for Alexander Yordanov: two concurrent TUM degrees, hackathon team lead, backend, data and engineering-software projects, by specialization, with CV and contact."
+>
+  <focus-tabs>
+    <section class="wrap brief">
+      <header class="brief-head">
+        <div>
+          <p class="label">Candidate brief</p>
+          <h1>{person.name}</h1>
+          <p class="pos">
+            Information Systems and Mechanical Engineering at TUM · software for complex systems
+          </p>
+        </div>
+        <ul class="quick" role="list">
+          {hasCvs && <li><a class="btn btn--primary btn--sm" href="/resume/">Download CV</a></li>}
+          <li><a class={hasCvs ? 'btn btn--sm' : 'btn btn--primary btn--sm'} href={`mailto:${person.email}`}>Email</a></li>
+          <li><a class="btn btn--sm" href={person.linkedin} rel="me noopener">LinkedIn</a></li>
+          <li><a class="btn btn--sm" href={person.github} rel="me noopener">GitHub</a></li>
+        </ul>
+      </header>
+
+      <dl class="facts">
+        <div>
+          <dt>Studying</dt>
+          <dd>
+            {education.map((e) => <span>{e.degree} <span class="dim">since {e.since}</span></span>)}
+            <span class="dim">Two programmes at TUM, in parallel</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Leadership</dt>
+          <dd>
+            {leadership.map((l) => <span>{l.title} — <a href={`/projects/${l.projectId}/`}>{l.project}</a></span>)}
+            <span class="dim">Two hackathon teams, 2026</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Industry</dt>
+          <dd>
+            {experience.map((x) => <span>{x.org}</span>)}
+            <span class="dim">Internship · quality assurance and precision manufacturing · Jun–Oct 2026, two periods</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Languages</dt>
+          <dd>
+            {languages.map((l) => <span>{l.name} <span class="dim">{l.level}</span></span>)}
+          </dd>
+        </div>
+        <div>
+          <dt>Based in</dt>
+          <dd>
+            <span>{person.location}</span>
+            <span class="dim">Munich / Garching · on-site, hybrid or remote</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Looking for</dt>
+          <dd>
+            <span>Working-student positions and internships</span>
+          </dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="wrap spec-sec" aria-labelledby="spec-h">
+      <div class="spec-bar">
+        <h2 id="spec-h">Explore my experience by specialization</h2>
+        <nav class="seg focus-nav no-print" aria-label="Specialization">
+          {focusAreas.map((f) => <a href={`#${f.id}`} data-focus={f.id}>{f.label}</a>)}
+        </nav>
+      </div>
+
+      {
+        focusAreas.map((f) => (
+          <section class="focus" id={f.id} aria-labelledby={`${f.id}-h`} data-focus-panel={f.id}>
+            <div class="focus-top">
+              <div>
+                <h3 id={`${f.id}-h`}>{f.label}</h3>
+                <p class="summary">{f.summary}</p>
+              </div>
+              <div class="focus-cv">
+                <p class="k">CV for this specialization</p>
+                <CvActions focus={f.cvKey} />
+              </div>
+            </div>
+
+            <div class="focus-body">
+              <div class="skills">
+                <p class="k">Skills in focus</p>
+                <ul role="list">
+                  {f.skills.map((sk) => <li>{sk}</li>)}
+                </ul>
+                {f.showExperience &&
+                  experience.map((x) => (
+                    <div class="xp">
+                      <p class="k">Relevant experience</p>
+                      <p class="xp-t">{x.org}, {x.place}</p>
+                      <p class="xp-d">
+                        Quality assurance, component inspection and dimensional checks against technical drawings; exposure
+                        to precision measurement (Mitutoyo MCOSMOS GEOPAK, FORMTRACEPAK) and laser welding.
+                      </p>
+                    </div>
+                  ))}
+              </div>
+
+              <ol class="rank" role="list">
+                {f.projects
+                  .filter((id) => byId[id])
+                  .map((id, i) => {
+                    const p = byId[id];
+                    return (
+                      <li>
+                        <span class="n mono">{String(i + 1).padStart(2, '0')}</span>
+                        <div class="main">
+                          <h4>
+                            <a href={`/projects/${p.id}/`}>{p.data.title}</a>
+                          </h4>
+                          <p class="role">{p.data.role}</p>
+                          <p class="tl">{p.data.tagline}</p>
+                          <p class="meta mono">
+                            <span>{KINDS[p.data.kind]}</span>
+                            <span>{p.data.stack.slice(0, 4).join(', ')}</span>
+                          </p>
+                        </div>
+                        <p class="go no-print">
+                          <a href={`/projects/${p.id}/`}>Case study</a>
+                          {hasDemo(p.id) && <a href={`/projects/${p.id}/#demo`}>Demo</a>}
+                        </p>
+                      </li>
+                    );
+                  })}
+              </ol>
+            </div>
+          </section>
+        ))
+      }
+    </section>
+
+    <section class="wrap closing">
+      <p>
+        {person.seeking}
+      </p>
+      <div class="closing-actions no-print">
+        <a class="btn btn--primary" href={`mailto:${person.email}`}>{person.email}</a>
+        <a class="btn" href="/resume/">All CVs and online résumé</a>
+        <a class="btn" href="/about/">Background</a>
+      </div>
+    </section>
+  </focus-tabs>
+</Base>
+
+<script>
+  /**
+   * Without JS all three specializations are shown one after another and the nav is plain anchor links.
+   * With JS the nav becomes a selector that shows one; the choice is shareable via ?focus=.
+   */
+  class FocusTabs extends HTMLElement {
+    connectedCallback() {
+      const links = [...this.querySelectorAll<HTMLAnchorElement>('[data-focus]')];
+      const panels = [...this.querySelectorAll<HTMLElement>('[data-focus-panel]')];
+      const ids = links.map((l) => l.dataset.focus!);
+
+      const select = (id: string, push: boolean) => {
+        if (!ids.includes(id)) id = ids[0];
+        for (const l of links) {
+          if (l.dataset.focus === id) l.setAttribute('aria-current', 'true');
+          else l.removeAttribute('aria-current');
+        }
+        for (const p of panels) p.hidden = p.dataset.focusPanel !== id;
+        if (push) {
+          const url = new URL(location.href);
+          url.searchParams.set('focus', id);
+          url.hash = '';
+          history.replaceState(null, '', url);
+        }
+      };
+
+      for (const l of links) {
+        l.addEventListener('click', (e) => {
+          e.preventDefault();
+          select(l.dataset.focus!, true);
+        });
+      }
+      const url = new URL(location.href);
+      select(url.searchParams.get('focus') ?? url.hash.slice(1), false);
+      // Printing shows every specialization, like the no-JS view.
+      addEventListener('beforeprint', () => panels.forEach((p) => (p.hidden = false)));
+      addEventListener('afterprint', () => select(new URL(location.href).searchParams.get('focus') ?? '', false));
+    }
+  }
+  customElements.define('focus-tabs', FocusTabs);
+</script>
+
+<style>
+  .brief {
+    padding-block: clamp(2rem, 1.25rem + 3vw, 3.5rem) var(--s-6);
+  }
+  .brief-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--s-4) var(--s-6);
+  }
+  .brief h1 {
+    margin: var(--s-3) 0 var(--s-2);
+    font-size: clamp(2.25rem, 1.2rem + 4.6vw, 4.5rem);
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+  }
+  .pos {
+    color: var(--text-2);
+    font-size: var(--text-md);
+    max-width: 52ch;
+  }
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    min-width: 0;
+  }
+  .brief-head > div {
+    min-width: 0;
+  }
+  .quick .btn {
+    min-height: 2.75rem;
+    padding-inline: var(--s-4);
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin: var(--s-6) 0 0;
+    border-top: 1px solid var(--border-strong);
+    border-bottom: 1px solid var(--border);
+  }
+  .facts > div {
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .facts > div:last-child {
+    border-bottom: 0;
+  }
+  .facts dt,
+  .k {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: var(--s-1);
+  }
+  .facts dd {
+    margin: 0;
+    display: grid;
+    gap: 1px;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+  .facts dd a {
+    display: inline-block;
+    padding-block: 0.2rem;
+    text-decoration-color: var(--border-strong);
+  }
+  @media (min-width: 22.5em) {
+    .facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--s-4);
+    }
+    .facts > div:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+  }
+  @media (min-width: 64em) {
+    .facts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .facts > div:nth-last-child(-n + 3) {
+      border-bottom: 0;
+    }
+  }
+
+  .spec-sec {
+    padding-block: var(--s-6) var(--s-7);
+  }
+  .spec-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3) var(--s-5);
+    margin-bottom: var(--s-5);
+  }
+  .spec-bar h2 {
+    font-size: var(--text-lg);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .focus {
+    border: 1px solid var(--border);
+    border-radius: var(--r-3);
+    background: var(--surface);
+  }
+  .focus + .focus {
+    margin-top: var(--s-5);
+  }
+  .focus[hidden] {
+    display: none;
+  }
+  .focus-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-4) var(--s-7);
+    padding: var(--s-5);
+    border-bottom: 1px solid var(--border);
+  }
+  .focus-top > div,
+  .rank .main {
+    min-width: 0;
+  }
+  .rank h4 {
+    overflow-wrap: anywhere;
+  }
+  .focus-top h3 {
+    font-size: var(--text-xl);
+    margin-bottom: var(--s-2);
+  }
+  .summary {
+    color: var(--text);
+    max-width: 64ch;
+    line-height: 1.5;
+  }
+  .focus-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .skills {
+    order: 2;
+    padding: var(--s-5);
+    border-top: 1px solid var(--border);
+  }
+  .skills ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-top: var(--s-2);
+  }
+  .skills li {
+    padding: 0.25em 0.6em;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-1);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+    color: var(--text);
+  }
+  .xp {
+    margin-top: var(--s-5);
+  }
+  .xp-t {
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  .xp-d {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+  .rank > li {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: var(--s-2) var(--s-3);
+    padding: var(--s-4) var(--s-5);
+    border-bottom: 1px solid var(--border);
+  }
+  .rank > li:last-child {
+    border-bottom: 0;
+  }
+  .rank .n {
+    padding-top: 0.35em;
+    color: var(--text-3);
+  }
+  .rank h4 {
+    font-size: var(--text-md);
+    letter-spacing: -0.015em;
+  }
+  .rank h4 a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    text-decoration: none;
+  }
+  .rank h4 a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+  }
+  .role {
+    font-size: var(--text-sm);
+    font-weight: 550;
+    color: var(--text);
+    margin-top: 1px;
+  }
+  .tl {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    line-height: 1.45;
+    margin-top: var(--s-1);
+    max-width: 68ch;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-4);
+    margin-top: var(--s-2);
+    font-size: var(--text-2xs);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+  .go {
+    grid-column: 2;
+    display: flex;
+    gap: var(--s-4);
+    font-size: var(--text-sm);
+    font-weight: 550;
+  }
+  .go a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  @media (min-width: 56em) {
+    .focus-top {
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      align-items: start;
+    }
+    .focus-body {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    }
+    .skills {
+      order: 0;
+      border-top: 0;
+      border-right: 1px solid var(--border);
+    }
+    .rank > li {
+      grid-template-columns: 2rem minmax(0, 1fr) auto;
+      align-items: start;
+    }
+    .go {
+      grid-column: auto;
+      flex-direction: column;
+      gap: 0;
+      align-items: flex-end;
+    }
+    .go a {
+      min-height: 1.9rem;
+    }
+  }
+
+  .closing {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4) var(--s-6);
+    padding-block: var(--s-6) var(--s-8);
+    border-top: 1px solid var(--border);
+  }
+  .closing p {
+    max-width: 44ch;
+    color: var(--text-2);
+  }
+  .closing-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+  .closing-actions .btn:first-child {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-align: center;
+    padding-block: var(--s-2);
+  }
+</style>

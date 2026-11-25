@@ -1,0 +1,60 @@
+{
+  "generated": "2026-11-25",
+  "status": "approved",
+  "files": [
+    {
+      "file": "Alexander_Yordanov_CV_Software_Engineering_EN.pdf",
+      "focus": "Software_Engineering",
+      "lang": "en",
+      "pages": 1,
+      "paper": "A4",
+      "bytes": 52977,
+      "sha256": "d5a58de1eaa65293b873954cb3043f752cbcdccf5bc08e95f16298345871b091"
+    },
+    {
+      "file": "Alexander_Yordanov_Lebenslauf_Software_Engineering_DE.pdf",
+      "focus": "Software_Engineering",
+      "lang": "de",
+      "pages": 1,
+      "paper": "A4",
+      "bytes": 56342,
+      "sha256": "318541ad78c1776192063cedbcf3c14d6acdeae731c0ccef354886060b2e34d3"
+    },
+    {
+      "file": "Alexander_Yordanov_CV_Data_Engineering_EN.pdf",
+      "focus": "Data_Engineering",
+      "lang": "en",
+      "pages": 1,
+      "paper": "A4",
+      "bytes": 52865,
+      "sha256": "110dc17a9dface9014914b26300b4664f15f9020486c5eaa4a9f29a6d9650c52"
+    },
+    {
+      "file": "Alexander_Yordanov_Lebenslauf_Data_Engineering_DE.pdf",
+      "focus": "Data_Engineering",
+      "lang": "de",
+      "pages": 1,
+      "paper": "A4",
+      "bytes": 56296,
+      "sha256": "3e2cb7e38225ff5fde96fce7bc1d9eb2fcc71ab3b5786b0611f531a3702729bd"
+    },
+    {
+      "file": "Alexander_Yordanov_CV_Engineering_Software_EN.pdf",
+      "focus": "Engineering_Software",
+      "lang": "en",
+      "pages": 1,
+      "paper": "A4",
+      "bytes": 53491,
+      "sha256": "f800cc4d0071cd0fcf2e698f6d58a2bfd7709d5f90873d11f9a7635c45341433"
+    },
+    {
+      "file": "Alexander_Yordanov_Lebenslauf_Engineering_Software_DE.pdf",
+      "focus": "Engineering_Software",
+      "lang": "de",
+      "pages": 1,
+      "paper": "A4",
+      "bytes": 56486,
+      "sha256": "a9f5eb3010f66f872b3f0f26e38afc4e909964da9a2d0cc9c3a64b978d4a6876"
+    }
+  ]
+}

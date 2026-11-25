@@ -1,0 +1,213 @@
+---
+import Base from '../layouts/Base.astro';
+import { person } from '../data/profile';
+import { legalAddress as a } from '../data/legal';
+
+const github = 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement';
+---
+
+<Base
+  title="Legal notice and privacy"
+  description="Legal notice (Impressum) and privacy information for the personal portfolio of Alexander Yordanov. Impressum und Datenschutzerklärung."
+>
+  <section class="wrap legal">
+    <p class="label">Legal notice · Impressum</p>
+    <h1>Legal notice and privacy</h1>
+    <p class="jump"><a href="#de" hreflang="de" lang="de">Deutsche Fassung: Impressum und Datenschutzerklärung</a></p>
+
+    <h2 id="notice">Legal notice</h2>
+    <p>Information pursuant to § 5 DDG (German Digital Services Act):</p>
+    <address>
+      {person.name}<br />
+      {a.street}<br />
+      {a.postcode} {a.city}<br />
+      {a.countryEn}
+    </address>
+    <p>Email: <a href={`mailto:${person.email}`}>{person.email}</a></p>
+    <p>
+      This is a personal, non-commercial portfolio. {person.name} is responsible for its content.
+    </p>
+
+    <h2 id="privacy">Privacy</h2>
+    <h3>Controller</h3>
+    <p>
+      The controller within the meaning of the GDPR is {person.name}, at the address and email given above.
+    </p>
+
+    <h3>What this site does with your data</h3>
+    <ul>
+      <li>It sets no cookies and runs no analytics, advertising or tracking scripts.</li>
+      <li>It loads no fonts, scripts or media from third-party servers; everything is served from the site itself.</li>
+      <li>
+        If you choose a colour theme, that choice is stored in your browser's local storage under the key
+        <code>ay-theme</code>. It never leaves your device and you can clear it in your browser settings.
+      </li>
+      <li>There is no contact form. If you write an email, your message is handled by your and my email providers and used only to answer you.</li>
+      <li>The interactive demos run entirely in your browser and send nothing anywhere.</li>
+      <li>CV documents are static PDF files; downloading one is an ordinary page request.</li>
+    </ul>
+
+    <h3>Hosting</h3>
+    <p>
+      The site is hosted on GitHub Pages, a service of GitHub, Inc. (USA). As with any website, the hosting provider
+      processes technical connection data such as your IP address in server logs in order to deliver the pages and to
+      secure the service. I have no access to these logs. Details, including the safeguards GitHub relies on for
+      transfers to the United States, are in <a href={github} rel="noopener">GitHub's privacy statement</a>.
+    </p>
+
+    <h3>Legal basis and your rights</h3>
+    <p>
+      Delivering the pages you request requires processing your IP address; the legal basis is the legitimate interest
+      in operating and securing a website (Art. 6(1)(f) GDPR).
+    </p>
+    <p>
+      Under the GDPR you have the right to access, rectification, erasure, restriction of processing and objection,
+      and the right to lodge a complaint with a data-protection supervisory authority. To exercise these rights with
+      regard to this site, write to the address above.
+    </p>
+
+    <h3>External links</h3>
+    <p>
+      Links to GitHub, LinkedIn and other sites lead to services operated by third parties, whose own privacy terms
+      apply once you follow a link.
+    </p>
+
+    <h2 id="content">Content and names</h2>
+    <p>
+      Project descriptions reflect my own work and, where stated, the work of my teammates. Company, university and
+      product names are used only to describe the context of a project; no affiliation or endorsement is implied.
+      The source code of this site is available under the MIT licence; texts and the AY monogram are © {person.name}.
+    </p>
+
+    <div lang="de" id="de" class="de">
+      <h2>Impressum</h2>
+      <p>Angaben gemäß § 5 DDG:</p>
+      <address>
+        {person.name}<br />
+        {a.street}<br />
+        {a.postcode} {a.city}<br />
+        {a.countryDe}
+      </address>
+      <p>E-Mail: <a href={`mailto:${person.email}`}>{person.email}</a></p>
+      <p>
+        Dies ist eine private, nicht kommerzielle Portfolio-Website. Verantwortlich für den Inhalt ist {person.name}
+        (Anschrift wie oben).
+      </p>
+
+      <h2>Datenschutzerklärung</h2>
+      <h3>Verantwortlicher</h3>
+      <p>
+        Verantwortlicher im Sinne der DSGVO ist {person.name}, erreichbar unter der oben genannten Anschrift und
+        E-Mail-Adresse.
+      </p>
+
+      <h3>Welche Daten diese Website verarbeitet</h3>
+      <ul>
+        <li>Die Website setzt keine Cookies und verwendet keine Analyse-, Werbe- oder Tracking-Dienste.</li>
+        <li>Schriften, Skripte und Medien werden nicht von Servern Dritter geladen; alle Inhalte stammen von der Website selbst.</li>
+        <li>
+          Wenn Sie ein Farbschema wählen, wird diese Einstellung im lokalen Speicher Ihres Browsers unter dem
+          Schlüssel <code>ay-theme</code> abgelegt. Sie verlässt Ihr Gerät nicht und kann in den Browsereinstellungen
+          gelöscht werden.
+        </li>
+        <li>Es gibt kein Kontaktformular. Wenn Sie eine E-Mail schreiben, wird Ihre Nachricht von Ihrem und meinem E-Mail-Anbieter verarbeitet und nur zur Beantwortung verwendet.</li>
+        <li>Die interaktiven Demonstrationen laufen vollständig in Ihrem Browser und übertragen keine Daten.</li>
+        <li>Die Lebensläufe sind statische PDF-Dateien; ein Download ist ein gewöhnlicher Seitenabruf.</li>
+      </ul>
+
+      <h3>Hosting</h3>
+      <p>
+        Die Website wird über GitHub Pages bereitgestellt, einen Dienst der GitHub, Inc. (USA). Wie bei jeder Website
+        verarbeitet der Hosting-Anbieter technische Verbindungsdaten wie Ihre IP-Adresse in Server-Protokollen, um die
+        Seiten auszuliefern und den Dienst abzusichern. Auf diese Protokolle habe ich keinen Zugriff. Einzelheiten,
+        auch zu den Garantien für die Übermittlung in die USA, enthält die
+        <a href={github} rel="noopener" hreflang="en">Datenschutzerklärung von GitHub</a>.
+      </p>
+
+      <h3>Rechtsgrundlage und Ihre Rechte</h3>
+      <p>
+        Für die Auslieferung der aufgerufenen Seiten muss Ihre IP-Adresse verarbeitet werden; Rechtsgrundlage ist das
+        berechtigte Interesse am Betrieb und an der Sicherheit einer Website (Art. 6 Abs. 1 lit. f DSGVO).
+      </p>
+      <p>
+        Nach der DSGVO haben Sie das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung und
+        Widerspruch sowie das Recht auf Beschwerde bei einer Datenschutz-Aufsichtsbehörde. Zur Ausübung dieser Rechte
+        in Bezug auf diese Website genügt eine Nachricht an die oben genannte Anschrift oder E-Mail-Adresse.
+      </p>
+
+      <h3>Externe Links</h3>
+      <p>
+        Links zu GitHub, LinkedIn und anderen Websites führen zu Angeboten Dritter, für die nach dem Anklicken deren
+        eigene Datenschutzbestimmungen gelten.
+      </p>
+
+      <h2>Inhalte und Namen</h2>
+      <p>
+        Die Projektbeschreibungen geben meine eigene Arbeit und, wo angegeben, die Arbeit meiner Teammitglieder
+        wieder. Unternehmens-, Hochschul- und Produktnamen dienen ausschließlich der Beschreibung des Projektkontexts;
+        eine Verbindung oder Empfehlung ist damit nicht verbunden. Der Quellcode dieser Website steht unter der
+        MIT-Lizenz; Texte und das AY-Monogramm sind © {person.name}.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .legal {
+    max-width: 50rem;
+    padding-block: clamp(2.5rem, 1.5rem + 4vw, 5rem) var(--section);
+  }
+  h1 {
+    margin: var(--s-4) 0 var(--s-4);
+    font-size: clamp(2.25rem, 1.4rem + 3.6vw, 3.75rem);
+    letter-spacing: -0.045em;
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+  .jump a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--text-2);
+  }
+  h2 {
+    margin: var(--s-8) 0 var(--s-3);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-xl);
+    letter-spacing: -0.03em;
+  }
+  h3 {
+    margin: var(--s-6) 0 var(--s-2);
+    font-size: var(--text-md);
+    letter-spacing: -0.01em;
+  }
+  p,
+  li,
+  address {
+    color: var(--text-2);
+    max-width: var(--measure);
+    overflow-wrap: anywhere;
+  }
+  p + p {
+    margin-top: var(--s-3);
+  }
+  address {
+    margin: var(--s-3) 0;
+    font-style: normal;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  ul {
+    padding-left: 1.2em;
+  }
+  li + li {
+    margin-top: var(--s-2);
+  }
+  .de {
+    margin-top: var(--s-9);
+  }
+  .de > h2:first-child {
+    border-top-color: var(--border-strong);
+  }
+</style>

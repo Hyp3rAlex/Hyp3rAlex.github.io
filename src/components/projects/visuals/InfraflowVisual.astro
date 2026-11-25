@@ -1,0 +1,560 @@
+---
+/**
+ * Mission-control panel built at build time from the repository's synthetic dataset at the cutoff:
+ * demand pipeline per lifecycle status, budget utilisation, team capacity, exception state and review-queue rows.
+ * Detail is added by container size: small card → pipeline + KPIs; medium → + budget and capacity; large → + issue rows.
+ */
+import data from '../../../data/demo/infraflow.json';
+import { computeKpis, priorityBand, priorityScore, type Demand, type Meta } from '../../../lib/infraflow';
+
+const meta = data.meta as unknown as Meta;
+const demands = data.demands as unknown as Demand[];
+const { values: k } = computeKpis(demands, meta);
+const labels = data.meta.statusLabel as Record<string, string>;
+const short: Record<string, string> = {
+  SUBMITTED: 'Submit',
+  NEEDS_INFO: 'Info',
+  TRIAGED: 'Triage',
+  ASSESSMENT: 'Assess',
+  READY_FOR_DECISION: 'Ready',
+  DEFERRED: 'Defer',
+  APPROVED: 'Approve',
+  HANDOFF: 'Handoff',
+  IN_DELIVERY: 'Deliver',
+  COMPLETE: 'Done',
+  REJECTED: 'Reject',
+  ROUTED_OUT: 'Routed',
+};
+const cols = meta.statusOrder.map((s) => ({ s, n: k.by_status[s] ?? 0, closed: meta.terminal.includes(s) }));
+const max = Math.max(...cols.map((c) => c.n));
+const openCols = cols.filter((c) => !c.closed).length;
+const closedTotal = k.total_demands - k.open_demands;
+
+const ex = data.portfolio.exceptionCounts;
+const fin = data.portfolio.finance;
+const pct = (n: number) => (n / fin.budgetEur) * 100;
+const keur = (n: number) => `€${(n / 1000).toLocaleString('en-GB', { maximumFractionDigits: 1 })}k`;
+const budget = [
+  { cls: 'sg-act', label: 'actual', v: fin.actualEur },
+  { cls: 'sg-com', label: 'committed', v: fin.openCommitmentsEur },
+  { cls: 'sg-apr', label: 'approved', v: fin.approvedNotCommittedEur },
+];
+const forecastPct = Math.round(pct(fin.forecastEacEur));
+
+const capMonth = '2026-12';
+const cap = Object.entries(data.portfolio.capacity[capMonth]).map(([team, c]) => {
+  const util = (c.allocated / c.available) * 100;
+  return { team, util, over: c.allocated > c.available, ...c };
+});
+const capScale = Math.max(100, ...cap.map((c) => c.util));
+
+// Two review-queue rows: the scripted deferral and the top-scored demand awaiting a decision.
+const scored = (d: Demand) => priorityScore(d.scores, meta.scoreWeights) ?? 0;
+const featured = demands.find((d) => d.id === 'ORION-REQ-017')!;
+const topReady = demands.filter((d) => d.status === 'READY_FOR_DECISION').sort((a, b) => scored(b) - scored(a))[0]!;
+const issues = [featured, topReady].map((d) => ({
+  id: d.id.replace('ORION-', ''),
+  title: d.title,
+  status: labels[d.status],
+  score: scored(d).toFixed(0),
+  band: priorityBand(scored(d), meta.priorityBands),
+  failed: d.gatesFailed ?? [],
+}));
+
+const alt =
+  `Mission-control panel on synthetic data at the ${meta.asOf} cutoff. Pipeline: ${cols.map((c) => `${labels[c.s]} ${c.n}`).join(', ')}. ` +
+  `${k.open_demands} of ${k.total_demands} demands open, ${k.approval_pending} awaiting a decision. ` +
+  `Forecast ${keur(fin.forecastEacEur)} of a ${keur(fin.budgetEur)} budget (${forecastPct} per cent). ` +
+  `Capacity in ${capMonth}: ${cap.map((c) => `${c.team} ${c.util.toFixed(0)} per cent${c.over ? ', over-allocated' : ''}`).join('; ')}. ` +
+  `${data.portfolio.exceptions.length} data exceptions, ${ex.CRITICAL} critical; report state ${data.portfolio.provisional ? 'provisional' : 'final'}.`;
+---
+
+<div class="viz" role="img" aria-label={alt}>
+  <p class="cap" aria-hidden="true">
+    <span class="name">InfraFlow<span class="more"> · mission control</span> · synthetic<span class="more"> · {meta.asOf}</span></span>
+    {
+      data.portfolio.provisional ? (
+        <span class="state">▲ Provisional<span class="more"> · {ex.CRITICAL} critical</span></span>
+      ) : (
+        <span class="state ok">✓ Final</span>
+      )
+    }
+  </p>
+
+  <div class="main" aria-hidden="true">
+    <section class="pipe" style={`--open:${openCols};--closed:${cols.length - openCols}`}>
+      <p class="h">Demand pipeline <span>{k.total_demands} demands</span></p>
+      <div class="cols">
+        {
+          cols.map((c) => (
+            <div class:list={['col', { closed: c.closed, hi: c.s === 'READY_FOR_DECISION' }]}>
+              <span class="b">
+                <span class="n">{c.n}</span>
+                <i style={`height:calc((100% - 1.6em) * ${(c.n / max).toFixed(3)})`} />
+              </span>
+              <span class="l">{short[c.s]}</span>
+            </div>
+          ))
+        }
+      </div>
+      <div class="groups">
+        <span class="g-open">Open {k.open_demands}</span>
+        <span class="g-closed">Closed {closedTotal}</span>
+      </div>
+    </section>
+
+    <div class="side">
+      <section class="budget">
+        <p class="h">Budget <span>{keur(fin.forecastEacEur)} forecast / {keur(fin.budgetEur)}</span></p>
+        <div class="bud">
+          {budget.map((b) => <i class={b.cls} style={`width:${pct(b.v).toFixed(2)}%`} />)}
+          <b class="fc" style={`left:${pct(fin.forecastEacEur).toFixed(2)}%`}>{forecastPct}%</b>
+        </div>
+        <p class="legend">
+          {budget.map((b) => <span class={b.cls}>{b.label} {Math.round(pct(b.v))}%</span>)}
+        </p>
+      </section>
+
+      <section class="capacity">
+        <p class="h">Capacity <span>{capMonth} · allocated / available h</span></p>
+        <ul role="list">
+          {
+            cap.map((c) => (
+              <li class:list={{ over: c.over }}>
+                <span class="t">{c.team}</span>
+                <span class="track" style={`--limit:${((100 / capScale) * 100).toFixed(1)}%`}>
+                  <i style={`width:${((c.util / capScale) * 100).toFixed(1)}%`} />
+                </span>
+                <span class="v">
+                  {c.over ? '▲ ' : ''}
+                  {c.util.toFixed(0)}%<span class="hrs"> {c.allocated}/{c.available}</span>
+                </span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+
+      <section class="issues">
+        <p class="h">Review queue <span>score · gates</span></p>
+        <ul role="list">
+          {
+            issues.map((i) => (
+              <li>
+                <span class="id">{i.id}</span>
+                <span class="ti">{i.title}</span>
+                <span class="st">{i.status}</span>
+                <span class="sc">{i.score}</span>
+                <span class:list={['gt', { fail: i.failed.length > 0 }]}>{i.failed.length ? `✕ ${i.failed.join(', ')}` : '✓ gates pass'}</span>
+              </li>
+            ))
+          }
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <dl class="kpis" aria-hidden="true">
+    <div><dd>{k.open_demands}</dd><dt>open</dt></div>
+    <div><dd>{k.approval_pending}</dd><dt>to decide</dt></div>
+    <div><dd>{k.overdue_open}</dd><dt>overdue</dt></div>
+    <div class="x"><dd>{data.portfolio.exceptions.length}</dd><dt>findings</dt></div>
+    <div class="wide-only"><dd>{k.high_priority_not_approvable}</dd><dt>high priority, gate failed</dt></div>
+    <div class="wide-only"><dd>{k.on_time_delivery_pct}%</dd><dt>delivered on time</dt></div>
+  </dl>
+</div>
+
+<style>
+  .viz {
+    container-type: size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    height: 100%;
+    padding: var(--s-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-2);
+  }
+  .cap {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+    padding-bottom: var(--s-2);
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+  .state {
+    color: var(--warn);
+  }
+  .state.ok {
+    color: var(--ok);
+  }
+  .more {
+    display: none;
+  }
+  .h {
+    display: none;
+    justify-content: space-between;
+    gap: var(--s-3);
+    margin: 0 0 var(--s-2);
+    font: inherit;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .h span {
+    color: var(--text-3);
+    letter-spacing: 0.02em;
+    text-transform: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-5);
+  }
+  .side {
+    display: none;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+
+  /* Pipeline */
+  .pipe {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .cols {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    text-align: center;
+  }
+  .b {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .col i {
+    display: block;
+    flex: none;
+    min-height: 2px;
+    background: var(--text-3);
+  }
+  .col.hi i {
+    background: var(--text);
+  }
+  .col.hi .n {
+    color: var(--text);
+  }
+  .col.closed i {
+    background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 5px);
+    outline: 1px solid var(--border-strong);
+    outline-offset: -1px;
+  }
+  .n {
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+  }
+  .l {
+    display: none;
+    padding-top: 3px;
+    color: var(--text-3);
+    font-size: 10.5px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .groups {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+  .groups span {
+    padding-top: 3px;
+    border-top: 1px solid var(--border-strong);
+  }
+  .g-open {
+    grid-column: span var(--open);
+  }
+  .g-closed {
+    grid-column: span var(--closed);
+    border-top-style: dashed !important;
+  }
+
+  /* Budget */
+  .bud {
+    position: relative;
+    display: flex;
+    height: 12px;
+    border: 1px solid var(--border-strong);
+  }
+  .bud i {
+    display: block;
+    height: 100%;
+  }
+  .bud .sg-act,
+  .legend .sg-act::before {
+    background: var(--text);
+  }
+  .bud .sg-com,
+  .legend .sg-com::before {
+    background: var(--text-3);
+  }
+  .bud .sg-apr,
+  .legend .sg-apr::before {
+    background: repeating-linear-gradient(135deg, var(--text-2) 0 2px, transparent 2px 4px);
+  }
+  .fc {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    border-left: 1px solid var(--text);
+    padding-left: 4px;
+    font-weight: 400;
+    line-height: 18px;
+    color: var(--text);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-3);
+    margin-top: var(--s-1);
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    max-height: 1.6em;
+  }
+  .legend span::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 5px;
+    outline: 1px solid var(--border-strong);
+  }
+
+  /* Capacity */
+  .capacity ul {
+    display: grid;
+    gap: 4px;
+  }
+  .capacity li {
+    display: grid;
+    grid-template-columns: 2.6em minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s-2);
+  }
+  .capacity .track {
+    position: relative;
+    display: block;
+    height: 8px;
+    background: var(--grid-line);
+  }
+  .capacity .track::after {
+    content: '';
+    position: absolute;
+    left: var(--limit);
+    top: -3px;
+    bottom: -3px;
+    border-left: 1px solid var(--border-strong);
+  }
+  .capacity .track i {
+    display: block;
+    height: 100%;
+    background: var(--text-3);
+  }
+  .capacity .over .track i {
+    background: var(--warn);
+  }
+  .capacity .over .v {
+    color: var(--warn);
+  }
+  .capacity .v {
+    min-width: 3.4em;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .hrs {
+    display: none;
+    color: var(--text-3);
+  }
+
+  /* Review-queue rows */
+  .issues {
+    display: none;
+  }
+  .issues ul {
+    display: grid;
+    border-top: 1px solid var(--border);
+  }
+  .issues li {
+    display: grid;
+    grid-template-columns: 4.6em minmax(0, 1fr) auto 2em auto;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .issues .id,
+  .issues .sc {
+    color: var(--text);
+  }
+  .issues .ti {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    color: var(--text);
+  }
+  .issues .st {
+    padding: 0 0.5em;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-1);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .issues .sc {
+    text-align: right;
+  }
+  .issues .gt {
+    color: var(--ok);
+  }
+  .issues .gt.fail {
+    color: var(--fail);
+  }
+
+  /* KPI strip */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--s-3);
+    margin: 0;
+    padding-top: var(--s-2);
+    border-top: 1px solid var(--border);
+  }
+  .kpis div {
+    min-width: 0;
+  }
+  .kpis dd {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: 1.2;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpis .x dd {
+    color: var(--warn);
+  }
+  .kpis dt {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wide-only {
+    display: none;
+  }
+
+  /* Medium: card on desktop (≈640×336) and tablet hero — pipeline beside budget and capacity */
+  @container (min-width: 29rem) {
+    .more {
+      display: inline;
+    }
+    .h {
+      display: flex;
+    }
+    .main {
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    }
+    .side {
+      display: flex;
+    }
+    .cols,
+    .groups {
+      gap: 4px;
+    }
+    .kpis dd {
+      font-size: var(--text-lg);
+    }
+  }
+  /* Large: the 21:9 case-study hero */
+  @container (min-width: 56rem) {
+    .viz {
+      padding: var(--s-5) var(--s-6);
+      gap: var(--s-4);
+    }
+    .main {
+      gap: var(--s-7);
+    }
+    .l,
+    .wide-only,
+    .hrs {
+      display: block;
+    }
+    .hrs {
+      display: inline;
+    }
+    .cols,
+    .groups {
+      gap: 8px;
+    }
+    .kpis {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    .bud {
+      height: 14px;
+    }
+  }
+  @container (min-width: 56rem) and (min-height: 26rem) {
+    .issues {
+      display: block;
+    }
+    .side {
+      gap: var(--s-4);
+    }
+  }
+  @container (min-width: 72rem) {
+    .viz {
+      font-size: var(--text-xs);
+    }
+    .l {
+      font-size: var(--text-xs);
+    }
+  }
+</style>

@@ -1,0 +1,284 @@
+---
+/**
+ * Architecture of the hackathon prototype as audited at dde641f.
+ * "AY" marks parts introduced by Alexander's commits; everything else is his teammates' work.
+ */
+const desc =
+  'Top to bottom: the browser UI (three static pages, vanilla JavaScript, Leaflet and MapLibre GL) calls an HTTP API served by a FastAPI app or a standard-library server. The API calls the routing engine, which contains hand-written Dijkstra routers, the cost function, a hard capability exclusion and a per-request edge-cost memo. The engine uses a spatial index and a disk cache. A data-selection module feeds it recorded ride data that the challenge provided and that is not in the repository. External sources, drawn dashed: OpenStreetMap via Overpass, committed as an extract, and the Open-Meteo forecast, which is read through the cache. Marked AY, developed by Alexander: disk cache, spatial index, edge-cost memo, data selection, the warm-up and start-up path, and 16 of the 27 unit tests. Everything else is the teammates’ work.';
+
+/* Mobile drawing: the same components stacked top to bottom, laid out from this list. */
+interface Block {
+  title: string;
+  lines: string[];
+  ay?: boolean;
+  /** Line index that carries an inline AY tag (for a partly attributed box). */
+  ayLine?: number;
+  ext?: boolean;
+  inner?: boolean;
+  /** Connector drawn above this block. */
+  link?: { label: string; dir: 'down' | 'up' | 'both'; dash?: boolean };
+  /** Section heading drawn above this block. */
+  group?: string;
+}
+const blocks: Block[] = [
+  { title: 'Browser UI', lines: ['3 static pages · vanilla JS', 'Leaflet / MapLibre GL'] },
+  { title: 'HTTP API', lines: ['engine/api.py (FastAPI)', 'engine/demo_server.py (stdlib)', '--warmup · single-flight start-up'], ayLine: 2, link: { label: 'JSON over HTTP', dir: 'both' } },
+  { title: 'Dijkstra · heapq', lines: ['three hand-written routers'], inner: true, group: 'Routing engine · pure Python, no library', link: { label: 'calls', dir: 'down' } },
+  { title: 'Cost function', lines: ['engine/scoring.py · multiplier ≥ 1'], inner: true },
+  { title: 'Hard exclusion', lines: ['lean-capability gate, before cost'], inner: true },
+  { title: 'Edge-cost memo', lines: ['per request, keyed by α · prebuilt arcs'], inner: true, ay: true },
+  { title: 'Spatial index', lines: ['engine/spatial.py', 'exact nearest point, box query'], ay: true, link: { label: 'engine uses', dir: 'both' } },
+  { title: 'Disk cache', lines: ['engine/cache.py · signature-keyed,', 'atomic, weather TTL + cooldown'], ay: true },
+  { title: 'Data selection', lines: ['engine/ride_data.py · paths,', 'explicit errors, status payload'], ay: true },
+  { title: 'Unit tests', lines: ['27 unittest methods, not run here', '16 of them · teammates 11'], ayLine: 1 },
+  { title: 'OpenStreetMap via Overpass', lines: ['road extract fetched once, committed;', 'segmentation kept in the disk cache'], ext: true, link: { label: 'data sources feed the boxes above', dir: 'up', dash: true } },
+  { title: 'Open-Meteo', lines: ['forecast API, no key', 'read through the cache, TTL 300 / 900 s'], ext: true },
+  { title: 'Recorded ride data', lines: ['provided by the challenge,', 'not in the repo, not shown'], ext: true },
+];
+const MX = 12;
+const MW = 336;
+let cursor = 10;
+const placed = blocks.map((b) => {
+  const linkY = b.link ? cursor : -1;
+  if (b.link) cursor += 40;
+  const groupY = b.group ? cursor : -1;
+  if (b.group) cursor += 26;
+  const h = 34 + b.lines.length * 17;
+  const y = cursor;
+  cursor += h + (b.inner ? 6 : 10);
+  return { ...b, y, h, linkY, groupY, x: b.inner ? MX + 10 : MX, w: b.inner ? MW - 20 : MW };
+});
+const inner = placed.filter((b) => b.inner);
+const engine = { y: inner[0]!.groupY - 8, h: inner.at(-1)!.y + inner.at(-1)!.h + 10 - (inner[0]!.groupY - 8) };
+const legendY = cursor + 12;
+const MH = legendY + 74;
+---
+
+<div class="dg-desktop has-mobile rp-wide" tabindex="0" role="group" aria-label="Architecture diagram">
+<svg viewBox="0 0 860 566" role="img" aria-labelledby="rp-arch-t rp-arch-d" class="rp-arch" style="min-width:800px">
+  <title id="rp-arch-t">Ride planner architecture with attribution</title>
+  <desc id="rp-arch-d">{desc}</desc>
+  <defs>
+    <marker id="rp-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="dg-head" d="M0 0.5L8 4L0 7.5Z"></path>
+    </marker>
+  </defs>
+
+  <!-- Browser -->
+  <rect class="dg-box" x="236" y="14" width="388" height="58" rx="4"></rect>
+  <text class="dg-title" x="252" y="38">Browser UI</text>
+  <text class="dg-sub" x="252" y="57">3 static pages · vanilla JS · Leaflet / MapLibre GL</text>
+
+  <path class="dg-flow dg-flow--beam" d="M430 72V110" marker-end="url(#rp-arrow)" marker-start="url(#rp-arrow)"></path>
+  <text class="dg-sub" x="442" y="96">JSON over HTTP</text>
+
+  <!-- API -->
+  <rect class="dg-box" x="236" y="112" width="388" height="78" rx="4"></rect>
+  <text class="dg-title" x="252" y="136">HTTP API</text>
+  <text class="dg-sub" x="252" y="155">engine/api.py (FastAPI) · engine/demo_server.py (stdlib)</text>
+  <g class="ay-tag"><rect x="252" y="165" width="24" height="15" rx="2"></rect><text x="264" y="176.5">AY</text></g>
+  <text class="dg-sub" x="284" y="177">--warmup · single-flight start-up · input checks</text>
+
+  <path class="dg-flow dg-flow--beam" d="M430 190V220" marker-end="url(#rp-arrow)"></path>
+
+  <!-- Engine -->
+  <rect class="dg-box" x="236" y="222" width="388" height="178" rx="4"></rect>
+  <text class="dg-title" x="252" y="245">Routing engine</text>
+  <text class="dg-sub" x="608" y="245" text-anchor="end">pure Python, no routing library</text>
+
+  <rect class="dg-box rp-inner" x="250" y="258" width="174" height="62" rx="3"></rect>
+  <text class="dg-title" x="262" y="280">Dijkstra · heapq</text>
+  <text class="dg-sub" x="262" y="297">three hand-written</text>
+  <text class="dg-sub" x="262" y="311">routers</text>
+
+  <rect class="dg-box rp-inner" x="436" y="258" width="174" height="62" rx="3"></rect>
+  <text class="dg-title" x="448" y="280">Cost function</text>
+  <text class="dg-sub" x="448" y="297">engine/scoring.py</text>
+  <text class="dg-sub" x="448" y="311">time × multiplier ≥ 1</text>
+
+  <rect class="dg-box rp-inner" x="250" y="328" width="174" height="62" rx="3"></rect>
+  <text class="dg-title" x="262" y="350">Hard exclusion</text>
+  <text class="dg-sub" x="262" y="367">lean-capability gate,</text>
+  <text class="dg-sub" x="262" y="381">applied before cost</text>
+
+  <rect class="dg-box dg-box--hi rp-inner" x="436" y="328" width="174" height="62" rx="3"></rect>
+  <text class="dg-title" x="448" y="350">Edge-cost memo</text>
+  <g class="ay-tag"><rect x="578" y="338" width="24" height="15" rx="2"></rect><text x="590" y="349.5">AY</text></g>
+  <text class="dg-sub" x="448" y="367">per request, keyed by α</text>
+  <text class="dg-sub" x="448" y="381">prebuilt arcs</text>
+
+  <!-- Left column -->
+  <rect class="dg-box" x="12" y="222" width="196" height="82" rx="4"></rect>
+  <text class="dg-title" x="26" y="245">Unit tests</text>
+  <text class="dg-sub" x="26" y="263">27 unittest methods:</text>
+  <g class="ay-tag"><rect x="26" y="266" width="24" height="15" rx="2"></rect><text x="38" y="277.5">AY</text></g>
+  <text class="dg-sub" x="56" y="277">16 · teammates 11</text>
+  <text class="dg-sub" x="26" y="291">counted, not run here</text>
+  <path class="dg-flow dg-flow--dash" d="M208 263H234" marker-end="url(#rp-arrow)"></path>
+
+  <rect class="dg-box dg-box--hi" x="12" y="318" width="196" height="82" rx="4"></rect>
+  <text class="dg-title" x="26" y="341">Data selection</text>
+  <g class="ay-tag"><rect x="172" y="329" width="24" height="15" rx="2"></rect><text x="184" y="340.5">AY</text></g>
+  <text class="dg-sub" x="26" y="359">engine/ride_data.py</text>
+  <text class="dg-sub" x="26" y="373">paths, explicit errors,</text>
+  <text class="dg-sub" x="26" y="387">status payload</text>
+  <path class="dg-flow" d="M208 359H234" marker-end="url(#rp-arrow)"></path>
+
+  <!-- Right column -->
+  <rect class="dg-box dg-box--hi" x="652" y="222" width="196" height="82" rx="4"></rect>
+  <text class="dg-title" x="666" y="245">Spatial index</text>
+  <g class="ay-tag"><rect x="812" y="233" width="24" height="15" rx="2"></rect><text x="824" y="244.5">AY</text></g>
+  <text class="dg-sub" x="666" y="263">engine/spatial.py</text>
+  <text class="dg-sub" x="666" y="277">exact nearest point,</text>
+  <text class="dg-sub" x="666" y="291">box query</text>
+  <path class="dg-flow" d="M626 263H650" marker-end="url(#rp-arrow)" marker-start="url(#rp-arrow)"></path>
+
+  <rect class="dg-box dg-box--hi" x="652" y="318" width="196" height="82" rx="4"></rect>
+  <text class="dg-title" x="666" y="341">Disk cache</text>
+  <g class="ay-tag"><rect x="812" y="329" width="24" height="15" rx="2"></rect><text x="824" y="340.5">AY</text></g>
+  <text class="dg-sub" x="666" y="359">engine/cache.py</text>
+  <text class="dg-sub" x="666" y="373">signature-keyed, atomic,</text>
+  <text class="dg-sub" x="666" y="387">weather TTL + cooldown</text>
+  <path class="dg-flow" d="M626 359H650" marker-end="url(#rp-arrow)" marker-start="url(#rp-arrow)"></path>
+
+  <!-- External sources -->
+  <rect class="dg-box dg-box--ext" x="12" y="446" width="196" height="66" rx="4"></rect>
+  <text class="dg-title" x="26" y="469">Recorded ride data</text>
+  <text class="dg-sub" x="26" y="487">provided by the challenge,</text>
+  <text class="dg-sub" x="26" y="501">not in the repo, not shown</text>
+  <path class="dg-flow dg-flow--dash" d="M110 446V402" marker-end="url(#rp-arrow)"></path>
+
+  <rect class="dg-box dg-box--ext" x="236" y="446" width="388" height="66" rx="4"></rect>
+  <text class="dg-title" x="252" y="469">OpenStreetMap via Overpass</text>
+  <text class="dg-sub" x="252" y="487">road extract fetched once, committed as a fixture;</text>
+  <text class="dg-sub" x="252" y="501">segmentation result kept in the disk cache</text>
+  <path class="dg-flow dg-flow--dash" d="M430 446V402" marker-end="url(#rp-arrow)"></path>
+
+  <rect class="dg-box dg-box--ext" x="652" y="446" width="196" height="66" rx="4"></rect>
+  <text class="dg-title" x="666" y="469">Open-Meteo</text>
+  <text class="dg-sub" x="666" y="487">forecast API, no key;</text>
+  <text class="dg-sub" x="666" y="501">TTL 300 s / 900 s</text>
+  <path class="dg-flow dg-flow--dash" d="M750 446V402" marker-end="url(#rp-arrow)"></path>
+
+  <!-- Legend -->
+  <g class="ay-tag"><rect x="12" y="540" width="24" height="15" rx="2"></rect><text x="24" y="551.5">AY</text></g>
+  <text class="dg-sub" x="44" y="552">developed by Alexander</text>
+  <rect class="dg-box" x="236" y="540" width="24" height="15" rx="2"></rect>
+  <text class="dg-sub" x="268" y="552">teammates’ work</text>
+  <rect class="dg-box dg-box--ext" x="436" y="540" width="24" height="15" rx="2"></rect>
+  <text class="dg-sub" x="468" y="552">external service or data source</text>
+</svg>
+</div>
+
+<div class="dg-mobile">
+  <svg viewBox={`0 0 360 ${MH}`} role="img" aria-labelledby="rp-archm-t rp-archm-d" class="rp-arch rp-archm">
+    <title id="rp-archm-t">Ride planner architecture with attribution</title>
+    <desc id="rp-archm-d">{desc}</desc>
+    <defs>
+      <marker id="rpm-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path class="dg-head" d="M0 0.5L8 4L0 7.5Z"></path>
+      </marker>
+    </defs>
+    <rect class="dg-box" x={MX} y={engine.y} width={MW} height={engine.h} rx="4"></rect>
+    {
+      placed.map((b) => (
+        <>
+          {b.link && (
+            <>
+              <path
+                class:list={['dg-flow', { 'dg-flow--dash': b.link.dash }]}
+                d={`M40 ${b.linkY + 3}V${b.linkY + 33}`}
+                marker-end={b.link.dir !== 'up' ? 'url(#rpm-arrow)' : undefined}
+                marker-start={b.link.dir !== 'down' ? 'url(#rpm-arrow)' : undefined}
+              />
+              <text class="rpm-sub" x="54" y={b.linkY + 22}>{b.link.label}</text>
+            </>
+          )}
+          {b.group && <text class="rpm-group" x={MX + 12} y={b.groupY + 12}>{b.group}</text>}
+          <rect class:list={['dg-box', { 'dg-box--ext': b.ext, 'dg-box--hi': b.ay, 'rp-inner': b.inner }]} x={b.x} y={b.y} width={b.w} height={b.h} rx="4" />
+          <text class="rpm-title" x={b.x + 12} y={b.y + 23}>{b.title}</text>
+          {b.ay && (
+            <g class="ay-tag">
+              <rect x={b.x + b.w - 38} y={b.y + 10} width="28" height="17" rx="2" />
+              <text x={b.x + b.w - 24} y={b.y + 23}>AY</text>
+            </g>
+          )}
+          {b.lines.map((line, i) =>
+            b.ayLine === i ? (
+              <>
+                <g class="ay-tag">
+                  <rect x={b.x + 12} y={b.y + 30 + i * 17} width="28" height="17" rx="2" />
+                  <text x={b.x + 26} y={b.y + 43 + i * 17}>AY</text>
+                </g>
+                <text class="rpm-sub" x={b.x + 48} y={b.y + 43 + i * 17}>{line}</text>
+              </>
+            ) : (
+              <text class="rpm-sub" x={b.x + 12} y={b.y + 42 + i * 17}>{line}</text>
+            ),
+          )}
+        </>
+      ))
+    }
+    <g class="ay-tag"><rect x={MX} y={legendY} width="28" height="17" rx="2"></rect><text x={MX + 14} y={legendY + 13}>AY</text></g>
+    <text class="rpm-sub" x={MX + 38} y={legendY + 13}>developed by Alexander</text>
+    <rect class="dg-box" x={MX} y={legendY + 24} width="28" height="17" rx="2"></rect>
+    <text class="rpm-sub" x={MX + 38} y={legendY + 37}>teammates’ work</text>
+    <rect class="dg-box dg-box--ext" x={MX} y={legendY + 48} width="28" height="17" rx="2"></rect>
+    <text class="rpm-sub" x={MX + 38} y={legendY + 61}>external service or data source</text>
+  </svg>
+</div>
+
+<style>
+  .rp-wide {
+    overflow-x: auto;
+  }
+  /* Box outlines carry the structure, so they use a tone with at least 3:1 against the background. */
+  .rp-arch .dg-box {
+    stroke: var(--text-3);
+  }
+  .rp-arch .dg-box--hi {
+    stroke: var(--text);
+    stroke-width: 1.5;
+  }
+  @media print {
+    .rp-wide {
+      overflow: visible;
+    }
+    .rp-wide > svg {
+      min-width: 0 !important;
+    }
+  }
+  .rpm-title {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    fill: var(--text);
+  }
+  .rpm-sub {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    fill: var(--text-3);
+  }
+  .rpm-group {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    fill: var(--text-2);
+  }
+  .rp-archm .ay-tag text {
+    font-size: 12px;
+  }
+  .rp-arch .rp-inner {
+    fill: var(--bg);
+  }
+  .ay-tag rect {
+    fill: var(--text);
+  }
+  .ay-tag text {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    fill: var(--bg);
+    text-anchor: middle;
+    letter-spacing: 0.04em;
+  }
+</style>

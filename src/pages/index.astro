@@ -1,0 +1,648 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import HeroSheet from '../components/identity/HeroSheet.astro';
+import SignalTrace from '../components/identity/SignalTrace.astro';
+import ProjectCard from '../components/projects/ProjectCard.astro';
+import { person, site, education, experience, leadership } from '../data/profile';
+import { capabilities } from '../data/capabilities';
+
+const projects = (await getCollection('projects', (p) => !p.data.draft && p.data.kind !== 'meta')).sort(
+  (a, b) => a.data.order - b.data.order,
+);
+const titleOf = Object.fromEntries(projects.map((p) => [p.id, p.data.title]));
+const [flagship, ...rest] = projects;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: person.name,
+    url: site.url + '/',
+    inLanguage: 'en',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: person.name,
+    url: site.url + '/',
+    email: `mailto:${person.email}`,
+    address: { '@type': 'PostalAddress', addressLocality: 'Munich', addressCountry: 'DE' },
+    affiliation: { '@type': 'CollegeOrUniversity', name: 'Technical University of Munich' },
+    knowsLanguage: ['en', 'de', 'bg'],
+    sameAs: [person.github, person.linkedin],
+  },
+];
+---
+
+<Base jsonLd={jsonLd}>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-id">
+        <p class="label hero-kicker">
+          <span>Portfolio</span>
+          <span>{person.location} · {person.coordinates}</span>
+        </p>
+        <h1 class="name">
+          <span class="line"><span>Alexander</span></span>
+          <span class="line"><span>Yordanov</span></span>
+        </h1>
+        <p class="tagline">{site.tagline}</p>
+        <p class="lede">I study Information Systems and Mechanical Engineering at TUM and build backend services, data pipelines and engineering tools.</p>
+
+        <div class="cta">
+          <a class="btn btn--primary" href="#work">Explore work <span class="arrow" aria-hidden="true">↓</span></a>
+          <a class="btn" href="/recruiter/">Recruiter brief <span class="arrow" aria-hidden="true">→</span></a>
+          <span class="social">
+            <a href={person.github} rel="me noopener">GitHub</a>
+            <a href={person.linkedin} rel="me noopener">LinkedIn</a>
+            <a href={`mailto:${person.email}`}>Email</a>
+          </span>
+        </div>
+      </div>
+
+      <div class="hero-fig">
+        <HeroSheet />
+      </div>
+
+      <dl class="hero-facts">
+        <div>
+          <dt>Studying at TUM</dt>
+          <dd>
+            B.Sc. Information Systems <span class="dim nw">since Oct 2025</span><br />
+            B.Sc. Mechanical Engineering <span class="dim nw">since Oct 2026</span><br />
+            <span class="dim">Two programmes, in parallel</span>
+          </dd>
+        </div>
+        <div class="f-focus">
+          <dt>Focus</dt>
+          <dd>Backend engineering<br />Data &amp; automation<br />Software for physical systems</dd>
+        </div>
+        <div>
+          <dt>Leadership</dt>
+          <dd>
+            {leadership.map((l) => <><a href={`/projects/${l.projectId}/`}>{l.title} — {l.project}</a><br /></>)}
+            <span class="dim">Two hackathon teams, 2026</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd><span class="status-dot" data-state="ok"></span> {person.seekingShort}<br /><span class="dim">Munich / Garching · on-site, hybrid or remote</span></dd>
+        </div>
+      </dl>
+      <div class="hero-trace">
+        <SignalTrace />
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="work" aria-labelledby="work-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <h2 id="work-h">Selected engineering projects</h2>
+        <p>
+          Backend, data and engineering software — each with a working demo, the architecture behind it and the source.
+        </p>
+      </header>
+
+      <div class="work-grid">
+        {
+          flagship && (
+            <div class="w-feature" data-reveal>
+              <ProjectCard project={flagship} index={0} layout="feature" />
+            </div>
+          )
+        }
+        {
+          rest.map((p, i) => (
+            <div class={`w-${i}`} data-reveal style={`--i:${i % 2}`}>
+              <ProjectCard project={p} index={i + 1} />
+            </div>
+          ))
+        }
+      </div>
+      <p class="work-more">
+        <a class="link-arrow" href="/projects/">All projects and repository index <span class="arrow" aria-hidden="true">→</span></a>
+      </p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="cap-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <h2 id="cap-h">Engineering capabilities in practice</h2>
+        <p>Each one links to the project where I used it.</p>
+      </header>
+      <div class="cap-grid">
+        {
+          capabilities.map((c, i) => (
+            <article class="cap" data-reveal style={`--i:${i}`}>
+              <h3>{c.title}</h3>
+              <ul role="list">
+                {c.items.map((item) => (
+                  <li>
+                    <span>{item.text}</span>
+                    <span class="ev">
+                      {item.evidence.map((id) =>
+                        titleOf[id] ? <a href={`/projects/${id}/`}>{titleOf[id]}</a> : null,
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="bg-h">
+    <div class="wrap">
+      <header class="sec-head">
+        <h2 id="bg-h">Connecting software engineering with mechanical systems</h2>
+        <p>Two bachelor's programmes in parallel, two hackathon teams led, and time on a precision-manufacturing shop floor.</p>
+      </header>
+      <ol class="ledger" role="list">
+        {
+          education.map((e) => (
+            <li data-reveal>
+              <p class="mono when">{e.since} — present</p>
+              <div>
+                <h3>{e.degree}</h3>
+                <p class="muted">{e.institution} · {e.note.toLowerCase()}</p>
+              </div>
+              <p class="detail">Coursework in {e.coursework.join(', ').toLowerCase().replace('cad (solidworks)', 'CAD (SolidWorks)')}.</p>
+            </li>
+          ))
+        }
+        {
+          leadership.map((l) => (
+            <li data-reveal>
+              <p class="mono when">{l.context.split(' · ')[1].replace(/^(\w+), (.*)$/, '$2 · $1')}</p>
+              <div>
+                <h3>{l.title} — <a href={`/projects/${l.projectId}/`}>{l.project}</a></h3>
+                <p class="muted">Hackathon team of three</p>
+              </div>
+              <p class="detail">{l.line}</p>
+            </li>
+          ))
+        }
+        {
+          experience.map((x) => (
+            <li data-reveal>
+              <p class="mono when">{x.period}</p>
+              <div>
+                <h3>{x.org}</h3>
+                <p class="muted">{x.role}</p>
+              </div>
+              <p class="detail">{x.summary}</p>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="work-more"><a class="link-arrow" href="/about/">More about my background <span class="arrow" aria-hidden="true">→</span></a></p>
+    </div>
+  </section>
+
+  <section class="section cta-sec" aria-labelledby="cta-h">
+    <div class="wrap cta-grid">
+      <div class="cta-fig">
+        <HeroSheet uid="sheet-b" />
+      </div>
+      <div>
+        <h2 id="cta-h">Open to working-student roles and internships.</h2>
+      </div>
+      <div class="cta-body">
+        <p class="lede">Munich / Garching — on-site, hybrid or remote. Email is the fastest way to reach me.</p>
+        <div class="cta">
+          <a class="btn btn--primary" href={`mailto:${person.email}`}>Write an email</a>
+          <a class="btn" href="/resume/">Download CV</a>
+          <a class="btn" href="/recruiter/">Recruiter brief</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    padding-block: clamp(1.5rem, 0.75rem + 2vw, 2.5rem) var(--s-2);
+    border-bottom: 1px solid var(--border);
+    overflow: clip;
+  }
+  .hero-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-7) var(--s-6);
+  }
+  .hero-kicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-5);
+    margin-bottom: clamp(0.75rem, 0.5rem + 1.2vw, 1.5rem);
+  }
+  .name {
+    font-size: clamp(3rem, 17.4vw, 9.5rem);
+    font-weight: 600;
+    line-height: 0.86;
+    letter-spacing: -0.055em;
+    margin-left: -0.045em;
+    text-wrap: nowrap;
+  }
+  .name .line {
+    display: block;
+    overflow: clip;
+    overflow-clip-margin: 0.12em;
+    padding-bottom: 0.06em;
+  }
+  .name .line > span {
+    display: inline-block;
+  }
+  .name .line:last-child {
+    color: var(--text-2);
+  }
+  .tagline {
+    margin-top: clamp(1.25rem, 0.9rem + 1.2vw, 1.75rem);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+  }
+  .lede {
+    margin-top: var(--s-4);
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-3);
+    margin-top: var(--s-5);
+  }
+  .social {
+    display: flex;
+    flex-basis: 100%;
+    gap: var(--s-4);
+  }
+  .social a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  .social a:hover {
+    color: var(--text);
+  }
+  .hero-fig {
+    display: none;
+    width: 100%;
+    order: 3;
+  }
+  @media (min-width: 40em) {
+    .hero-fig {
+      display: block;
+      max-width: 26rem;
+    }
+  }
+  .hero-facts {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+    border-top: 1px solid var(--border);
+  }
+  .hero-facts > div {
+    padding: var(--s-4) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-facts dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: var(--s-1);
+  }
+  .hero-facts dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+  .nw {
+    white-space: nowrap;
+  }
+  .hero-facts a {
+    text-decoration-color: var(--border-strong);
+  }
+  .hero-trace {
+    order: 4;
+    min-width: 0;
+  }
+  /* Phones: get to the first project fast — the lede already states the focus. */
+  @media (max-width: 39.99em) {
+    .f-focus,
+    .hero-trace,
+    .hero-kicker span:last-child,
+    .hero + .section :global(.sec-head > p:not(.label)) {
+      display: none;
+    }
+    .hero {
+      padding-top: var(--s-5);
+    }
+    .hero-kicker {
+      margin-bottom: var(--s-3);
+    }
+    .hero-facts a {
+      display: inline-block;
+      padding-block: 0.15rem;
+    }
+    .hero-grid {
+      gap: var(--s-5);
+    }
+    .hero .lede {
+      font-size: var(--text-md);
+    }
+    .tagline {
+      margin-top: var(--s-5);
+    }
+    .hero .cta {
+      margin-top: var(--s-5);
+    }
+    .hero-facts > div {
+      padding: var(--s-3) 0;
+    }
+    .hero + .section {
+      padding-top: var(--s-7);
+    }
+    .hero + .section :global(.sec-head) {
+      margin-bottom: var(--s-5);
+    }
+  }
+  .hero-facts .status-dot {
+    display: inline-block;
+    margin-right: 0.35em;
+    vertical-align: 0.08em;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .name .line > span {
+      animation: rise 620ms var(--ease-out) both;
+    }
+    .name .line:nth-child(2) > span {
+      animation-delay: 70ms;
+    }
+    .hero-kicker,
+    .tagline,
+    .hero .lede,
+    .hero .cta,
+    .hero-fig,
+    .hero-facts {
+      animation: fade-up 560ms var(--ease-out) both;
+      animation-delay: 180ms;
+    }
+    .hero .cta {
+      animation-delay: 240ms;
+    }
+    .hero-fig {
+      animation-delay: 120ms;
+    }
+    .hero-facts {
+      animation-delay: 320ms;
+    }
+    .hero-kicker {
+      animation-delay: 0ms;
+    }
+  }
+  @keyframes rise {
+    from {
+      transform: translateY(102%);
+    }
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+
+  @media (min-width: 30em) {
+    .hero-facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--s-5);
+    }
+  }
+  @media (min-width: 40em) {
+    .social {
+      flex-basis: auto;
+      margin-left: var(--s-3);
+    }
+  }
+  @media (min-width: 64em) {
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      align-items: end;
+    }
+    .hero-fig {
+      justify-self: end;
+      max-width: 31rem;
+      order: 0;
+    }
+    .hero-facts {
+      grid-column: 1 / -1;
+      grid-template-columns: 1.25fr 0.9fr 1.35fr 1.15fr;
+      margin-top: var(--s-5);
+    }
+    .hero-trace {
+      grid-column: 1 / -1;
+      margin-top: calc(-1 * var(--s-6));
+    }
+    .hero-grid {
+      row-gap: var(--s-6);
+    }
+    .hero-facts > div {
+      border-bottom: 0;
+      padding-right: var(--s-5);
+    }
+    .name {
+      font-size: clamp(4.75rem, 0.6rem + 8.2vw, 8.25rem);
+    }
+  }
+
+  /* ---------- Work ---------- */
+  .work-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-5);
+  }
+  .work-more {
+    margin-top: var(--s-7);
+  }
+  @media (min-width: 48em) {
+    .work-grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+    .w-feature {
+      grid-column: 1 / -1;
+    }
+    .w-0,
+    .w-3 {
+      grid-column: span 7;
+    }
+    .w-1,
+    .w-2 {
+      grid-column: span 5;
+    }
+    .w-4 {
+      grid-column: 1 / -1;
+    }
+  }
+  /* Cards sharing a row get the same visual height, whatever their column width. */
+  @media (min-width: 62em) {
+    .work-grid :global(.card--standard .visual) {
+      aspect-ratio: auto;
+      height: 21rem;
+    }
+  }
+  @media (min-width: 48em) and (max-width: 61.99em) {
+    .w-0,
+    .w-1,
+    .w-2,
+    .w-3 {
+      grid-column: span 6;
+    }
+  }
+
+  /* ---------- Capabilities ---------- */
+  .cap-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cap {
+    padding: 0 0 var(--s-6);
+  }
+  .cap h3 {
+    margin: 0 0 var(--s-4);
+    font-size: var(--text-lg);
+  }
+  .cap li:first-child {
+    border-top-color: var(--border-strong);
+  }
+  .cap li {
+    display: grid;
+    gap: 2px;
+    padding: var(--s-3) 0;
+    border-top: 1px solid var(--border);
+    font-size: var(--text-sm);
+  }
+  .cap .ev {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.03em;
+    color: var(--text-3);
+  }
+  .cap .ev a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    color: var(--text-3);
+    text-decoration: none;
+  }
+  .cap .ev a:hover {
+    color: var(--text);
+  }
+  @media (min-width: 48em) {
+    .cap-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--s-7);
+    }
+  }
+  @media (min-width: 76em) {
+    .cap-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      column-gap: var(--s-6);
+    }
+    .cap {
+      border-bottom: 0;
+    }
+    .cap h3 {
+      min-height: 2.4em;
+      display: flex;
+      align-items: flex-end;
+    }
+  }
+
+  /* ---------- Background: a ledger, not cards ---------- */
+  .ledger {
+    border-top: 1px solid var(--border-strong);
+  }
+  .ledger > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-2);
+    padding: var(--s-5) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ledger h3 {
+    font-size: var(--text-lg);
+  }
+  .ledger h3 a {
+    text-decoration-color: var(--border-strong);
+  }
+  .ledger .muted {
+    font-size: var(--text-sm);
+    margin-top: 2px;
+  }
+  .ledger .detail {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    line-height: 1.55;
+  }
+  .ledger .when {
+    color: var(--text-2);
+  }
+  @media (min-width: 60em) {
+    .ledger > li {
+      grid-template-columns: 11rem minmax(0, 1fr) minmax(0, 1.1fr);
+      gap: var(--s-6);
+      align-items: baseline;
+    }
+  }
+
+  /* ---------- CTA ---------- */
+  .cta-grid {
+    display: grid;
+    gap: var(--s-6);
+  }
+  .cta-grid h2 {
+    margin-top: var(--s-4);
+    font-size: var(--text-3xl);
+    letter-spacing: -0.045em;
+    line-height: 0.98;
+  }
+  .cta-body .lede {
+    max-width: 40ch;
+  }
+  .cta-fig {
+    max-width: 22rem;
+  }
+  @media (min-width: 40em) {
+    .cta-fig {
+      display: none;
+    }
+  }
+  @media (min-width: 60em) {
+    .cta-grid {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      align-items: end;
+    }
+  }
+</style>

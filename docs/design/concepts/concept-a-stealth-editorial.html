@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Concept A — Stealth Editorial · Alexander Yordanov</title>
+<style>
+  @font-face {
+    font-family: 'Space Grotesk Variable';
+    src: url('../../../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2') format('woff2');
+    font-weight: 300 700;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Inter Variable';
+    src: url('../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2');
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  :root {
+    color-scheme: dark;
+    --bg: #08090b;
+    --text: #f4f4f5;
+    --text-2: #b5b8be;
+    --text-3: #93979f;
+    --rule: #2a2c31;
+    --rule-strong: #43464d;
+    --focus: #9cc7ff;
+    --display: 'Space Grotesk Variable', ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --body: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --gutter: clamp(1.25rem, 0.6rem + 3vw, 3.5rem);
+    --col: calc((100% - 11 * 1.5rem) / 12);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: clip;
+  }
+  h1, h2, h3, p, ol, dl, dd { margin: 0; }
+  ol { list-style: none; padding: 0; }
+  a { color: inherit; text-decoration: none; }
+  a:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .wrap { max-width: 82.5rem; margin-inline: auto; padding-inline: var(--gutter); }
+  .small-caps {
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  /* Header: a single line of type, no chrome */
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1.5rem;
+  }
+  .brand { display: inline-flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: var(--text-2); min-height: 2.75rem; }
+  .brand svg { color: var(--text); }
+  .nav { display: flex; gap: clamp(1rem, 3vw, 2.5rem); font-size: 0.875rem; }
+  .nav a { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--text-2); }
+  .nav a:hover, .nav a[aria-current] { color: var(--text); }
+
+  /* Hero */
+  .hero { padding-block: clamp(3rem, 1rem + 9vw, 8.5rem) clamp(3rem, 2rem + 5vw, 6.5rem); }
+  .folio { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: clamp(1.5rem, 1rem + 2vw, 3rem); }
+  .name {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(3.25rem, 17.6vw, 13.5rem);
+    line-height: 0.84;
+    letter-spacing: -0.06em;
+    margin-left: -0.05em;
+    white-space: nowrap;
+  }
+  .name span { display: block; }
+  .name span + span { color: var(--text-3); }
+  .hero-foot {
+    display: grid;
+    gap: 2rem 1.5rem;
+    margin-top: clamp(2.5rem, 1.5rem + 5vw, 6rem);
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule-strong);
+  }
+  .statement {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(1.5rem, 1.1rem + 1.9vw, 2.75rem);
+    line-height: 1.08;
+    letter-spacing: -0.035em;
+    max-width: 16ch;
+  }
+  .about { color: var(--text-2); max-width: 40ch; }
+  .about strong { color: var(--text); font-weight: 500; }
+  .about p + p { margin-top: 1rem; }
+  .text-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-top: 0.75rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--rule-strong);
+    line-height: 1.2;
+    min-height: 0;
+    padding-block: 0.6rem 0.3rem;
+  }
+  .text-link:hover { border-color: var(--text); }
+
+  /* Selected work: numbered editorial index */
+  .work { padding-block: clamp(3rem, 2rem + 5vw, 6.5rem) clamp(4rem, 3rem + 5vw, 8rem); }
+  .work-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-bottom: 1.25rem; }
+  .work-head h2 { font-family: var(--body); font-weight: 400; }
+  .entry { border-top: 1px solid var(--rule); }
+  .entry:last-child { border-bottom: 1px solid var(--rule); }
+  .entry a {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0.25rem 0.75rem;
+    padding-block: 1.5rem;
+  }
+  .num {
+    font-family: var(--display);
+    font-size: 0.875rem;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.5em;
+  }
+  .entry h3 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(1.625rem, 1.1rem + 2.4vw, 3.25rem);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+    color: var(--text-2);
+    transition: color 140ms ease;
+  }
+  .entry a:hover h3, .entry--lead h3 { color: var(--text); }
+  .entry .what { grid-column: 2; color: var(--text-2); font-size: 0.9375rem; max-width: 44ch; margin-top: 0.5rem; }
+  .entry .stack { grid-column: 2; margin-top: 0.5rem; }
+  .entry--lead a { padding-block: 2rem 2.25rem; }
+  .entry--lead .what { font-size: 1.0625rem; color: var(--text); }
+  .entry--lead .read { grid-column: 2; margin-top: 1rem; font-size: 0.875rem; color: var(--text); }
+  .entry--lead .read span { border-bottom: 1px solid var(--rule-strong); padding-bottom: 0.2rem; }
+  .colophon { margin-top: 2rem; color: var(--text-3); font-size: 0.8125rem; max-width: 60ch; }
+
+  @media (min-width: 56em) {
+    .hero-foot { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+    .statement { grid-column: 1 / span 6; }
+    .about { grid-column: 8 / span 5; }
+    .entry a {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 0 1.5rem;
+      align-items: baseline;
+      padding-block: 1.75rem;
+    }
+    .num { grid-column: 1; padding-top: 0; }
+    .entry h3 { grid-column: 2 / span 6; }
+    .entry .what { grid-column: 8 / span 5; grid-row: 1; margin-top: 0; }
+    .entry .stack { grid-column: 8 / span 5; }
+    .entry--lead a { padding-block: 2.5rem 2.75rem; }
+    .entry--lead h3 { font-size: clamp(3rem, 1rem + 4.6vw, 5.25rem); letter-spacing: -0.05em; line-height: 0.95; grid-row: 1 / span 3; }
+    .entry--lead .read { grid-column: 8 / span 5; }
+  }
+</style>
+</head>
+<body>
+  <header class="wrap head">
+    <a class="brand" href="#top" aria-label="Alexander Yordanov — home">
+      <svg width="30" height="22" viewBox="0 0 44 32" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="square" stroke-linejoin="miter" stroke-miterlimit="8" aria-hidden="true">
+        <path d="M3 29 15 3 27 29"/><path d="M11.5 21h7"/><path d="M27.5 3 34 17l6.5-14"/><path d="M34 17v12"/>
+      </svg>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="#work" aria-current="true">Work</a>
+      <a href="#about">About</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="wrap hero">
+      <p class="folio small-caps"><span>Portfolio</span><span>Munich, Germany</span></p>
+      <h1 class="name"><span>Alexander</span><span>Yordanov</span></h1>
+
+      <div class="hero-foot" id="about">
+        <p class="statement">Building software for complex systems.</p>
+        <div class="about">
+          <p>
+            <strong>Information Systems and Mechanical Engineering student at TUM.</strong>
+            B.Sc. Information Systems since October 2025; B.Sc. Mechanical Engineering since October 2026, in parallel.
+          </p>
+          <p id="contact">Open to working-student roles and internships.</p>
+          <a class="text-link" href="#work">Selected work&ensp;↓</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap work" id="work" aria-labelledby="work-h">
+      <div class="work-head small-caps">
+        <h2 id="work-h" class="small-caps">Selected work</h2>
+        <span>01 — 05</span>
+      </div>
+      <ol>
+        <li class="entry entry--lead">
+          <a href="#work">
+            <span class="num">01</span>
+            <h3>LongiSafe Lab</h3>
+            <p class="what">Validation tooling for vehicle longitudinal dynamics, built on synthetic data.</p>
+            <p class="stack small-caps">Python · Excel / VBA</p>
+            <p class="read"><span>Read the case study&ensp;→</span></p>
+          </a>
+        </li>
+        <li class="entry">
+          <a href="#work">
+            <span class="num">02</span>
+            <h3>Demographics Service</h3>
+            <p class="what">A backend service that ingests ArcGIS data into PostgreSQL.</p>
+            <p class="stack small-caps">Java · Spring Boot · PostgreSQL</p>
+          </a>
+        </li>
+        <li class="entry">
+          <a href="#work">
+            <span class="num">03</span>
+            <h3>InfraFlow Mission Control</h3>
+            <p class="what">A synthetic demand-management and reporting demonstrator.</p>
+            <p class="stack small-caps">Python</p>
+          </a>
+        </li>
+        <li class="entry">
+          <a href="#work">
+            <span class="num">04</span>
+            <h3>BMW Motorrad Ride Planner</h3>
+            <p class="what">Team hackathon prototype for planning rides with graph routing.</p>
+            <p class="stack small-caps">Team hackathon · Graph routing</p>
+          </a>
+        </li>
+        <li class="entry">
+          <a href="#work">
+            <span class="num">05</span>
+            <h3>Tacto Negotiation Arena</h3>
+            <p class="what">Team hackathon entry: a rule-based negotiation agent.</p>
+            <p class="stack small-caps">Team hackathon · Rule-based agent</p>
+          </a>
+        </li>
+      </ol>
+      <p class="colophon">Concept A of three — premium stealth editorial. Static prototype for the design comparison; links are placeholders.</p>
+    </section>
+  </main>
+</body>
+</html>

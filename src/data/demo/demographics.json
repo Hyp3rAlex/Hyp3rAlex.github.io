@@ -1,0 +1,336 @@
+{
+ "kind": "static-replay",
+ "retrievedAt": "2026-11-25T01:24:10Z",
+ "source": {
+  "serviceUrl": "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/USA_Census_Counties/FeatureServer/0",
+  "queryUrls": [
+   "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/USA_Census_Counties/FeatureServer/0/query?where=1%3D1&outFields=population,state_name&returnGeometry=false&f=json&resultOffset=0&resultRecordCount=2000",
+   "https://services.arcgis.com/P3ePLMYs2RVChkJx/ArcGIS/rest/services/USA_Census_Counties/FeatureServer/0/query?where=1%3D1&outFields=population,state_name&returnGeometry=false&f=json&resultOffset=2000&resultRecordCount=2000"
+  ],
+  "itemTitle": "USA Census Counties",
+  "itemUrl": "https://www.arcgis.com/home/item.html?id=14c5450526a8430298b2fa74da12c2f4",
+  "copyrightText": "Sources: Esri; U.S. Department of Commerce, Census Bureau; U.S. Department of Commerce (DOC), National Oceanic and Atmospheric Administration (NOAA), National Ocean Service (NOS), National Geodetic Survey (NGS)",
+  "licence": "Esri Master License Agreement (item licenseInfo); terms: https://goto.arcgis.com/termsofuse/viewtermsofuse",
+  "citationRequest": "Cite the 'U.S. Census Bureau' when using this data. (layer description)",
+  "layerDataLastEditDate": "2024-11-21T19:05:44Z"
+ },
+ "counts": {
+  "serviceReportedCount": 3144,
+  "pagesFetched": 2,
+  "pageSize": 2000,
+  "featuresFetched": 3144,
+  "featuresSkippedNull": 9,
+  "statesAggregated": 50,
+  "totalPopulation": 333859535
+ },
+ "states": [
+  {
+   "stateName": "Alabama",
+   "abbr": "AL",
+   "population": 5098606,
+   "counties": 67
+  },
+  {
+   "stateName": "Alaska",
+   "abbr": "AK",
+   "population": 732320,
+   "counties": 30
+  },
+  {
+   "stateName": "Arizona",
+   "abbr": "AZ",
+   "population": 7427991,
+   "counties": 15
+  },
+  {
+   "stateName": "Arkansas",
+   "abbr": "AR",
+   "population": 3055695,
+   "counties": 75
+  },
+  {
+   "stateName": "California",
+   "abbr": "CA",
+   "population": 39877642,
+   "counties": 58
+  },
+  {
+   "stateName": "Colorado",
+   "abbr": "CO",
+   "population": 5971129,
+   "counties": 64
+  },
+  {
+   "stateName": "Delaware",
+   "abbr": "DE",
+   "population": 1021276,
+   "counties": 3
+  },
+  {
+   "stateName": "District of Columbia",
+   "abbr": "DC",
+   "population": 700690,
+   "counties": 1
+  },
+  {
+   "stateName": "Florida",
+   "abbr": "FL",
+   "population": 22381338,
+   "counties": 67
+  },
+  {
+   "stateName": "Georgia",
+   "abbr": "GA",
+   "population": 11033083,
+   "counties": 159
+  },
+  {
+   "stateName": "Hawaii",
+   "abbr": "HI",
+   "population": 1466064,
+   "counties": 5
+  },
+  {
+   "stateName": "Idaho",
+   "abbr": "ID",
+   "population": 1955585,
+   "counties": 44
+  },
+  {
+   "stateName": "Illinois",
+   "abbr": "IL",
+   "population": 12719013,
+   "counties": 102
+  },
+  {
+   "stateName": "Indiana",
+   "abbr": "IN",
+   "population": 6879052,
+   "counties": 92
+  },
+  {
+   "stateName": "Iowa",
+   "abbr": "IA",
+   "population": 3226869,
+   "counties": 99
+  },
+  {
+   "stateName": "Kansas",
+   "abbr": "KS",
+   "population": 2952421,
+   "counties": 105
+  },
+  {
+   "stateName": "Kentucky",
+   "abbr": "KY",
+   "population": 4547961,
+   "counties": 120
+  },
+  {
+   "stateName": "Louisiana",
+   "abbr": "LA",
+   "population": 4673107,
+   "counties": 64
+  },
+  {
+   "stateName": "Maine",
+   "abbr": "ME",
+   "population": 1377216,
+   "counties": 16
+  },
+  {
+   "stateName": "Maryland",
+   "abbr": "MD",
+   "population": 6259408,
+   "counties": 24
+  },
+  {
+   "stateName": "Massachusetts",
+   "abbr": "MA",
+   "population": 7121186,
+   "counties": 14
+  },
+  {
+   "stateName": "Michigan",
+   "abbr": "MI",
+   "population": 10098040,
+   "counties": 83
+  },
+  {
+   "stateName": "Minnesota",
+   "abbr": "MN",
+   "population": 5798827,
+   "counties": 87
+  },
+  {
+   "stateName": "Mississippi",
+   "abbr": "MS",
+   "population": 2964164,
+   "counties": 82
+  },
+  {
+   "stateName": "Missouri",
+   "abbr": "MO",
+   "population": 6208310,
+   "counties": 115
+  },
+  {
+   "stateName": "Montana",
+   "abbr": "MT",
+   "population": 1122044,
+   "counties": 56
+  },
+  {
+   "stateName": "Nebraska",
+   "abbr": "NE",
+   "population": 1994532,
+   "counties": 93
+  },
+  {
+   "stateName": "Nevada",
+   "abbr": "NV",
+   "population": 3228249,
+   "counties": 17
+  },
+  {
+   "stateName": "New Hampshire",
+   "abbr": "NH",
+   "population": 1401426,
+   "counties": 10
+  },
+  {
+   "stateName": "New Jersey",
+   "abbr": "NJ",
+   "population": 9398155,
+   "counties": 21
+  },
+  {
+   "stateName": "New Mexico",
+   "abbr": "NM",
+   "population": 2127919,
+   "counties": 33
+  },
+  {
+   "stateName": "New York",
+   "abbr": "NY",
+   "population": 20113414,
+   "counties": 62
+  },
+  {
+   "stateName": "North Carolina",
+   "abbr": "NC",
+   "population": 10765678,
+   "counties": 100
+  },
+  {
+   "stateName": "North Dakota",
+   "abbr": "ND",
+   "population": 793128,
+   "counties": 53
+  },
+  {
+   "stateName": "Ohio",
+   "abbr": "OH",
+   "population": 11849286,
+   "counties": 88
+  },
+  {
+   "stateName": "Oklahoma",
+   "abbr": "OK",
+   "population": 4022510,
+   "counties": 77
+  },
+  {
+   "stateName": "Oregon",
+   "abbr": "OR",
+   "population": 4335082,
+   "counties": 36
+  },
+  {
+   "stateName": "Pennsylvania",
+   "abbr": "PA",
+   "population": 13039412,
+   "counties": 67
+  },
+  {
+   "stateName": "Rhode Island",
+   "abbr": "RI",
+   "population": 1107434,
+   "counties": 5
+  },
+  {
+   "stateName": "South Carolina",
+   "abbr": "SC",
+   "population": 5311184,
+   "counties": 46
+  },
+  {
+   "stateName": "South Dakota",
+   "abbr": "SD",
+   "population": 910839,
+   "counties": 66
+  },
+  {
+   "stateName": "Tennessee",
+   "abbr": "TN",
+   "population": 7120037,
+   "counties": 95
+  },
+  {
+   "stateName": "Texas",
+   "abbr": "TX",
+   "population": 30506523,
+   "counties": 254
+  },
+  {
+   "stateName": "Utah",
+   "abbr": "UT",
+   "population": 3458220,
+   "counties": 29
+  },
+  {
+   "stateName": "Vermont",
+   "abbr": "VT",
+   "population": 649316,
+   "counties": 14
+  },
+  {
+   "stateName": "Virginia",
+   "abbr": "VA",
+   "population": 8787063,
+   "counties": 133
+  },
+  {
+   "stateName": "Washington",
+   "abbr": "WA",
+   "population": 7962223,
+   "counties": 39
+  },
+  {
+   "stateName": "West Virginia",
+   "abbr": "WV",
+   "population": 1775669,
+   "counties": 55
+  },
+  {
+   "stateName": "Wisconsin",
+   "abbr": "WI",
+   "population": 5954433,
+   "counties": 72
+  },
+  {
+   "stateName": "Wyoming",
+   "abbr": "WY",
+   "population": 578766,
+   "counties": 23
+  }
+ ],
+ "skipped": [
+  {
+   "stateName": "Connecticut",
+   "abbr": "CT",
+   "records": 9,
+   "nullPopulation": 9
+  }
+ ]
+}

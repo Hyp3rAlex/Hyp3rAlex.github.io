@@ -1,0 +1,736 @@
+---
+/**
+ * API replay + data explorer for the Demographics Service case study.
+ * Static replay over the state-level snapshot; no network, no Spring Boot. Logic: src/lib/demographics.ts.
+ * The default state (GET /api/states, table sorted by population) is server-rendered so the block reads without JavaScript.
+ */
+import data from '../../data/demo/demographics.json';
+import { DEFAULT_EXPLORER, METRICS, SNAPSHOT_ROWS, describe, explorerView, formatBody, formatInt, route, statusState } from '../../lib/demographics';
+
+const PRESETS = [
+  '/api/states',
+  '/api/states/Texas',
+  '/api/states/texas',
+  '/api/states/Connecticut',
+  '/api/states/District%20of%20Columbia',
+  '/api/states?name=Texas',
+];
+const DEFAULT_PATH = PRESETS[0]!;
+const initial = route(`GET ${DEFAULT_PATH}`);
+const view = explorerView(SNAPSHOT_ROWS, DEFAULT_EXPLORER);
+const editDate = new Date(data.source.layerDataLastEditDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const licenceName = data.source.licence.split(' (')[0];
+const skipped = data.skipped[0]!;
+const counts = data.counts;
+---
+
+<demographics-demo class="demo" data-default-path={DEFAULT_PATH}>
+  <div class="demo-bar">
+    <span>Demographics Service · API replay + data explorer</span>
+    <span class="badge">Static replay — not a live Spring Boot service</span>
+  </div>
+  <ul class="dm-terms" role="list">
+    <li>Snapshot retrieved 25 Nov 2026</li>
+    <li><code>updatedAt</code> is the snapshot retrieval time, not an ingestion time</li>
+    <li>Rows are sorted for display; the service’s order is unspecified</li>
+    <li>The API returns population only; record counts and shares are computed from the snapshot</li>
+  </ul>
+
+  <section class="dm-part" aria-labelledby="dm-h-req">
+    <h3 id="dm-h-req" class="dm-h">1 · Send a request</h3>
+    <div class="demo-controls">
+      <div class="field dm-reqfield">
+        <label for="dm-path">Request path</label>
+        <div class="dm-reqline">
+          <span class="dm-method" aria-hidden="true">GET</span>
+          <input id="dm-path" type="text" value={DEFAULT_PATH} spellcheck="false" autocomplete="off" autocapitalize="off" inputmode="url" data-path-input disabled />
+          <button type="button" class="btn btn--primary" data-send disabled>Send</button>
+        </div>
+      </div>
+      <div class="field dm-presetfield">
+        <span class="flabel" id="dm-presets-l">Presets</span>
+        <div class="dm-presets" role="group" aria-labelledby="dm-presets-l">
+          {
+            PRESETS.map((p) => (
+              <button type="button" class="btn dm-preset" data-preset={p} aria-label={`GET ${p}`} aria-pressed={p === DEFAULT_PATH ? 'true' : 'false'} disabled>
+                {p === DEFAULT_PATH ? p : p.replace(DEFAULT_PATH, '…')}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+      <p class="dm-nojs">The controls need JavaScript. Without it, this block shows the default request and the full table.</p>
+    </div>
+    <div class="demo-stage dm-resp">
+      <p class="dm-line">
+        <span class="dm-k">Request</span>
+        <code data-req>GET {DEFAULT_PATH}</code>
+      </p>
+      <p class="dm-line">
+        <span class="dm-k">Response</span>
+        <span class="verdict" data-state={statusState(initial)} data-status>{describe(initial)}</span>
+      </p>
+      <p class="dm-note" data-note>{initial.note}</p>
+      <pre class="dm-body" tabindex="0" aria-label="Response body" data-body>{formatBody(initial.body)}</pre>
+      <p class="dm-empty" data-empty hidden>(empty body — <code>ResponseEntity.notFound().build()</code> writes no content)</p>
+    </div>
+  </section>
+
+  <section class="dm-part" aria-labelledby="dm-h-exp">
+    <h3 id="dm-h-exp" class="dm-h">2 · Explore the {counts.statesAggregated} rows</h3>
+    <div class="demo-controls">
+      <div class="field dm-filterfield">
+        <label for="dm-filter">Filter by name or abbreviation</label>
+        <input id="dm-filter" type="search" placeholder="e.g. new, TX" spellcheck="false" autocomplete="off" data-filter disabled />
+      </div>
+      <div class="field dm-metricfield">
+        <label for="dm-metric">Metric</label>
+        <select id="dm-metric" data-metric disabled>
+          {METRICS.map((m) => <option value={m.id} selected={m.id === DEFAULT_EXPLORER.metric}>{m.label}</option>)}
+        </select>
+      </div>
+      <fieldset class="dm-sortfield">
+        <legend>Sort</legend>
+        <div class="seg">
+          <button type="button" data-sort="metric" data-dir="desc" aria-pressed="true" disabled>Value ↓</button>
+          <button type="button" data-sort="metric" data-dir="asc" aria-pressed="false" disabled>Value ↑</button>
+          <button type="button" data-sort="name" data-dir="asc" aria-pressed="false" disabled>Name A–Z</button>
+          <button type="button" data-sort="name" data-dir="desc" aria-pressed="false" disabled>Name Z–A</button>
+        </div>
+      </fieldset>
+      <button type="button" class="btn" data-reset disabled>Reset</button>
+    </div>
+    <p class="dm-hint">Select a state name to send its <code>GET /api/states/&#123;stateName&#125;</code> request in the replay above.</p>
+    <div class="table-scroll dm-table" tabindex="0" role="group" aria-label="State table, scrollable">
+      <table>
+        <caption class="visually-hidden">
+          One row per state the service returns, with the selected metric. Record counts and shares are computed from the snapshot.
+          Connecticut is listed as skipped and is not part of the API response.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" data-col="name" aria-sort="none">State</th>
+            <th scope="col" data-col="metric" aria-sort="descending"><span data-metric-head>{METRICS[0]!.label}</span></th>
+          </tr>
+        </thead>
+        <tbody data-rows>
+          {
+            view.rows.map((r) => (
+              <tr data-name={r.row.stateName}>
+                <th scope="row">
+                  <button type="button" class="dm-rowbtn" data-request={r.row.stateName} aria-label={`${r.row.stateName}: send GET request`} disabled>
+                    {r.row.stateName}
+                  </button>
+                  <span class="dm-ab">{r.row.abbr}</span>
+                </th>
+                <td>
+                  <div class="dm-pop">
+                    <span class="dm-n" data-value>{r.label}</span>
+                    <span class="dm-bar" aria-hidden="true">
+                      <i style={`width:${r.barPct.toFixed(2)}%`} />
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ))
+          }
+          <tr class="dm-skip" data-skip data-name={skipped.stateName}>
+            <th scope="row">
+              <button type="button" class="dm-rowbtn" data-request={skipped.stateName} aria-label={`${skipped.stateName}: send GET request`} disabled>
+                {skipped.stateName}
+              </button>
+              <span class="dm-ab">{skipped.abbr}</span>
+            </th>
+            <td>
+              <div class="dm-skipbox">
+                <b>Skipped</b> — no row<span class="dm-long">. All {skipped.nullPopulation} records have <code>POPULATION: null</code> and are dropped by the null filter.</span>
+                <span class="dm-short">: {skipped.nullPopulation} × null population</span>
+              </div>
+            </td>
+          </tr>
+          <tr data-none hidden>
+            <td colspan="2">No state matches this filter.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <dl class="demo-readout">
+      <div>
+        <dt>Rows shown</dt>
+        <dd data-shown>{view.shown} of {view.total}</dd>
+      </div>
+      <div>
+        <dt>Population, rows shown</dt>
+        <dd data-sum>{formatInt(view.sum)}</dd>
+      </div>
+      <div>
+        <dt>Records fetched</dt>
+        <dd>{formatInt(counts.featuresFetched)}</dd>
+      </div>
+      <div>
+        <dt>Skipped, null population</dt>
+        <dd>{counts.featuresSkippedNull}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <p class="visually-hidden" role="status" data-live></p>
+
+  <p class="demo-foot">
+    Population as published in Esri’s USA Census Counties layer, aggregated to state level. {data.source.copyrightText}. Licence stated on the{' '}
+    <a href={data.source.itemUrl} rel="noopener">layer’s item page</a>: {licenceName}; layer data last edited {editDate}. Only state-level
+    aggregates are shipped here, no county rows. JSON is indented for reading; the service emits it compact. The routing is a TypeScript
+    re-implementation of the controller contract audited at revision <code>1bf9c87</code>; it runs in your browser and makes no network requests.
+  </p>
+</demographics-demo>
+
+<style>
+  demographics-demo {
+    display: block;
+  }
+  .dm-terms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-5);
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
+  .dm-terms li {
+    margin: 0;
+    padding-left: 0.9em;
+    position: relative;
+    color: var(--text-2);
+  }
+  .dm-terms li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.6em;
+    width: 4px;
+    height: 4px;
+    background: var(--warn);
+  }
+  .dm-part + .dm-part {
+    border-top: 1px solid var(--border-strong);
+  }
+  .dm-h {
+    margin: 0;
+    padding: var(--s-4) var(--s-4) 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  /* Request line */
+  .dm-reqfield {
+    flex: 1 1 100%;
+  }
+  .dm-reqline {
+    display: flex;
+    gap: var(--s-2);
+    min-width: 0;
+  }
+  .dm-method {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--s-3);
+    border: 1px solid var(--border);
+    border-radius: var(--r-2);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  input[type='text'],
+  input[type='search'] {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 var(--s-3);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-2);
+    background: var(--bg);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+  }
+  input::placeholder {
+    color: var(--text-3);
+    opacity: 1;
+  }
+  .dm-presetfield {
+    flex: 1 1 100%;
+  }
+  .dm-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+  .dm-preset {
+    max-width: 100%;
+    padding: 0 var(--s-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: 400;
+    letter-spacing: 0;
+    height: auto;
+    padding-block: var(--s-2);
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  .dm-preset[aria-pressed='true'] {
+    --btn-bd: var(--text);
+    --btn-bg: var(--raised);
+  }
+  .dm-nojs {
+    flex: 1 1 100%;
+    font-size: var(--text-xs);
+    color: var(--text-3);
+  }
+  :global(.js) .dm-nojs {
+    display: none;
+  }
+
+  /* Response */
+  .dm-resp {
+    display: grid;
+    gap: var(--s-3);
+  }
+  .dm-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--s-1) var(--s-3);
+    margin: 0;
+    max-width: none;
+  }
+  .dm-k {
+    flex: 0 0 5.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .dm-line code {
+    overflow-wrap: anywhere;
+  }
+  .dm-note {
+    margin: 0;
+    max-width: 72ch;
+    font-size: var(--text-sm);
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  .dm-body {
+    margin: 0;
+    max-height: 17rem;
+    overflow: auto;
+    background: var(--bg) !important;
+    color: var(--text);
+  }
+  .dm-body[hidden] {
+    display: none;
+  }
+  .dm-empty {
+    margin: 0;
+    padding: var(--s-4) var(--s-5);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+
+  /* Explorer */
+  .dm-filterfield {
+    flex: 1 1 14rem;
+  }
+  .dm-sortfield {
+    display: grid;
+    gap: var(--s-1);
+  }
+  .seg > button {
+    min-height: 2.75rem;
+    padding: 0 var(--s-3);
+  }
+  .dm-table {
+    max-height: 27rem;
+    overflow: auto;
+    /* Keep keyboard-focused rows clear of the sticky header (WCAG 2.4.11). */
+    scroll-padding-top: 4rem;
+    border: 0;
+    border-radius: 0;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  thead th[aria-sort='ascending']::after {
+    content: ' ↑';
+    color: var(--text);
+  }
+  thead th[aria-sort='descending']::after {
+    content: ' ↓';
+    color: var(--text);
+  }
+  tbody th {
+    font-weight: 500;
+    color: var(--text);
+  }
+  tbody td {
+    color: var(--text-2);
+  }
+  tbody th,
+  tbody td {
+    padding-block: 0;
+    vertical-align: middle;
+  }
+  .dm-skip td,
+  tr[data-none] td {
+    padding-block: var(--s-3);
+  }
+  tbody td:last-child {
+    width: 66%;
+  }
+  .dm-rowbtn {
+    scroll-margin-top: 4rem;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 0.2em;
+  }
+  .dm-rowbtn:hover:not(:disabled) {
+    text-decoration-color: var(--text);
+  }
+  .dm-rowbtn:disabled {
+    color: inherit;
+    cursor: default;
+    text-decoration: none;
+  }
+  .dm-hint {
+    margin: 0;
+    padding: var(--s-3) var(--s-4);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  .dm-metricfield select {
+    width: 100%;
+    font-size: var(--text-sm);
+    min-height: 2.75rem;
+  }
+  .dm-ab {
+    margin-left: 0.3em;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-3);
+  }
+  .dm-pop {
+    display: grid;
+    grid-template-columns: 6.5em minmax(0, 1fr);
+    align-items: center;
+    gap: var(--s-3);
+  }
+  .dm-n {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--text);
+  }
+  .dm-bar {
+    display: block;
+    height: 9px;
+    border-left: 1px solid var(--border-strong);
+  }
+  .dm-bar i {
+    display: block;
+    height: 100%;
+    background: var(--text-2);
+  }
+  .dm-skip th,
+  .dm-skip td {
+    background: var(--raised);
+  }
+  .dm-skipbox {
+    padding: var(--s-2) var(--s-3);
+    border: 1px dashed var(--warn);
+    border-radius: var(--r-2);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--text-2);
+  }
+  .dm-skipbox b {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--warn);
+  }
+  tr[hidden] {
+    display: none;
+  }
+  /* Row addressed by the last single-state request */
+  tr[data-hit] th {
+    box-shadow: inset 3px 0 0 var(--text);
+  }
+  tr[data-hit] th::after {
+    content: '← last request';
+    margin-left: 0.6em;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    font-weight: 400;
+    color: var(--text-2);
+  }
+  .dm-short {
+    display: none;
+  }
+  @media (max-width: 40em) {
+    .dm-long {
+      display: none;
+    }
+    .dm-short {
+      display: inline;
+    }
+    tbody th {
+      white-space: normal;
+    }
+    th,
+    td {
+      padding-inline: var(--s-3);
+    }
+    tbody td:last-child {
+      width: 48%;
+    }
+    .dm-metricfield {
+      order: 3;
+      flex: 1 1 100%;
+    }
+    .dm-pop {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 3px;
+    }
+    .dm-n {
+      text-align: left;
+    }
+    .dm-k {
+      flex-basis: 100%;
+    }
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .dm-filterfield {
+      order: 1;
+      flex: 1 1 0;
+    }
+    [data-reset] {
+      order: 2;
+    }
+    .dm-sortfield {
+      order: 4;
+      flex: 1 1 100%;
+    }
+    .dm-body {
+      max-height: 12.5rem;
+    }
+    .dm-table {
+      max-height: 23rem;
+    }
+    .demo-controls {
+      gap: var(--s-3) var(--s-3);
+    }
+  }
+  @media print {
+    .dm-table,
+    .dm-body {
+      max-height: none;
+      overflow: visible;
+    }
+    .dm-body {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    thead th {
+      position: static;
+    }
+  }
+</style>
+
+<script>
+  import {
+    DEFAULT_EXPLORER,
+    METRICS,
+    SNAPSHOT_ROWS,
+    describe,
+    explorerView,
+    formatBody,
+    formatInt,
+    pathForState,
+    route,
+    stateNameFromPath,
+    statusState,
+    type ExplorerOptions,
+    type Metric,
+  } from '../../lib/demographics';
+
+  class DemographicsDemo extends HTMLElement {
+    private opts: ExplorerOptions = { ...DEFAULT_EXPLORER };
+
+    connectedCallback() {
+      const input = this.q<HTMLInputElement>('[data-path-input]');
+      const filter = this.q<HTMLInputElement>('[data-filter]');
+      const metric = this.q<HTMLSelectElement>('[data-metric]');
+
+      this.q('[data-send]').addEventListener('click', () => this.send(input.value));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.send(input.value);
+        }
+      });
+      for (const b of this.querySelectorAll<HTMLButtonElement>('[data-preset]')) {
+        b.addEventListener('click', () => {
+          input.value = b.dataset.preset ?? '';
+          this.send(input.value);
+        });
+      }
+      // Explorer → API panel: a state name sends the request that addresses it.
+      for (const b of this.querySelectorAll<HTMLButtonElement>('[data-request]')) {
+        b.addEventListener('click', () => {
+          input.value = pathForState(b.dataset.request ?? '');
+          this.send(input.value);
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          this.q('.dm-resp').scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+        });
+      }
+
+      filter.addEventListener('input', () => {
+        this.opts.query = filter.value;
+        this.renderTable(true);
+      });
+      metric.addEventListener('change', () => {
+        this.opts.metric = metric.value as Metric;
+        this.renderTable(true);
+      });
+      for (const b of this.querySelectorAll<HTMLButtonElement>('[data-sort]')) {
+        b.addEventListener('click', () => {
+          this.opts.sortBy = b.dataset.sort === 'name' ? 'name' : 'metric';
+          this.opts.dir = b.dataset.dir === 'asc' ? 'asc' : 'desc';
+          this.renderTable(true);
+        });
+      }
+      this.q('[data-reset]').addEventListener('click', () => {
+        filter.value = '';
+        metric.value = DEFAULT_EXPLORER.metric;
+        this.opts = { ...DEFAULT_EXPLORER };
+        this.renderTable(false);
+        input.value = this.dataset.defaultPath ?? '/api/states';
+        this.send(input.value, false);
+        this.announce('Demo reset: GET /api/states, table sorted by population, largest first.');
+      });
+
+      // Controls are rendered disabled so they are not dead without JavaScript.
+      for (const el of this.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('[disabled]')) el.disabled = false;
+    }
+
+    private q<T extends HTMLElement = HTMLElement>(sel: string): T {
+      const el = this.querySelector<T>(sel);
+      if (!el) throw new Error(`demographics-demo: missing ${sel}`);
+      return el;
+    }
+
+    private announce(msg: string) {
+      this.q('[data-live]').textContent = msg;
+    }
+
+    private send(raw: string, announce = true) {
+      const path = raw.trim();
+      const res = route(`GET ${path}`);
+      this.q('[data-req]').textContent = `GET ${path}`;
+      const status = this.q('[data-status]');
+      status.textContent = describe(res);
+      status.dataset.state = statusState(res);
+      this.q('[data-note]').textContent = res.note;
+      const body = this.q('[data-body]');
+      const empty = this.q('[data-empty]');
+      body.textContent = formatBody(res.body);
+      body.hidden = res.body === null;
+      body.scrollTop = 0;
+      empty.hidden = res.body !== null;
+      // Only the controller's own 404 is known to have an empty body.
+      empty.textContent =
+        res.handler === 'getStateByName' ? '(empty body — ResponseEntity.notFound().build() writes no content)' : '(body not replayed)';
+      for (const b of this.querySelectorAll<HTMLButtonElement>('[data-preset]')) {
+        b.setAttribute('aria-pressed', String(b.dataset.preset === path));
+      }
+      // Mark the table row a single-state request asked for (also the skipped Connecticut row).
+      const name = res.handler === 'getStateByName' ? stateNameFromPath(path) : null;
+      for (const tr of this.querySelectorAll<HTMLTableRowElement>('tr[data-name]')) {
+        tr.toggleAttribute('data-hit', name !== null && tr.dataset.name === name);
+      }
+      if (announce) this.announce(`GET ${path}: ${describe(res)}. ${res.note}`);
+    }
+
+    private renderTable(announce: boolean) {
+      const view = explorerView(SNAPSHOT_ROWS, this.opts);
+      const tbody = this.q('[data-rows]');
+      const byName = new Map<string, HTMLTableRowElement>();
+      for (const tr of tbody.querySelectorAll<HTMLTableRowElement>('tr[data-name]:not([data-skip])')) {
+        byName.set(tr.dataset.name ?? '', tr);
+        tr.hidden = true;
+      }
+      for (const r of view.rows) {
+        const tr = byName.get(r.row.stateName);
+        if (!tr) continue;
+        tr.hidden = false;
+        const value = tr.querySelector<HTMLElement>('[data-value]');
+        const bar = tr.querySelector<HTMLElement>('.dm-bar i');
+        if (value) value.textContent = r.label;
+        if (bar) bar.style.width = `${r.barPct.toFixed(2)}%`;
+        tbody.append(tr);
+      }
+      const skip = this.q<HTMLTableRowElement>('[data-skip]');
+      const none = this.q<HTMLTableRowElement>('[data-none]');
+      skip.hidden = !view.skippedVisible;
+      none.hidden = !view.empty;
+      tbody.append(skip, none);
+
+      const metricLabel = METRICS.find((m) => m.id === this.opts.metric)?.label ?? '';
+      this.q('[data-metric-head]').textContent = metricLabel;
+      const aria = this.opts.dir === 'asc' ? 'ascending' : 'descending';
+      for (const th of this.querySelectorAll<HTMLElement>('th[data-col]')) {
+        th.setAttribute('aria-sort', th.dataset.col === this.opts.sortBy ? aria : 'none');
+      }
+      for (const b of this.querySelectorAll<HTMLButtonElement>('[data-sort]')) {
+        b.setAttribute('aria-pressed', String(b.dataset.sort === this.opts.sortBy && b.dataset.dir === this.opts.dir));
+      }
+      this.q('[data-shown]').textContent = `${view.shown} of ${view.total}`;
+      this.q('[data-sum]').textContent = formatInt(view.sum);
+      this.q('.dm-table').scrollTop = 0;
+
+      if (announce) {
+        const by = this.opts.sortBy === 'name' ? 'name' : metricLabel.toLowerCase();
+        const ct = view.skippedVisible ? ' Connecticut is listed as skipped.' : '';
+        this.announce(`${view.shown} of ${view.total} rows shown: ${metricLabel.toLowerCase()}, sorted by ${by}, ${aria}. Population of rows shown ${formatInt(view.sum)}.${ct}`);
+      }
+    }
+  }
+
+  if (!customElements.get('demographics-demo')) customElements.define('demographics-demo', DemographicsDemo);
+</script>

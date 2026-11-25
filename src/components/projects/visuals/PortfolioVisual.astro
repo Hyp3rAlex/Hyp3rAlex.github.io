@@ -1,0 +1,89 @@
+---
+/** Build manifest of this site: real route list from the content collection plus recorded measurements. */
+import { getCollection } from 'astro:content';
+import { siteMetrics as m } from '../../../data/site-metrics';
+
+const projects = (await getCollection('projects', (p) => !p.data.draft)).sort((a, b) => a.data.order - b.data.order);
+const routes = ['/', '/projects/', ...projects.map((p) => `/projects/${p.id}/`), '/about/', '/recruiter/', '/resume/', '/contact/'];
+const lh = m.lighthouse.find((r) => r.page === '/') ?? m.lighthouse[0];
+---
+
+<div class="viz" role="img" aria-label={`Build manifest of this site: ${routes.length} static routes, ${m.unitTests} unit tests, ${m.homeJsGzipKb} kilobytes of compressed JavaScript on the home page, Lighthouse mobile performance ${lh.performance} and accessibility ${lh.accessibility} on the home page, measured ${m.measuredOn}.`}>
+  <p class="cap" aria-hidden="true"><span>astro build · static</span><span>{routes.length} routes</span></p>
+  <ul class="routes" role="list" aria-hidden="true">
+    {routes.map((r) => <li><span>├─</span> {r}</li>)}
+  </ul>
+  <dl class="nums" aria-hidden="true">
+    <div><dd>{m.unitTests}</dd><dt>unit tests</dt></div>
+    <div><dd>{m.homeJsGzipKb} kB</dd><dt>home JS, gzip</dt></div>
+    <div><dd>{lh.performance} / {lh.accessibility}</dd><dt>Lighthouse perf / a11y</dt></div>
+  </dl>
+</div>
+
+<style>
+  .viz {
+    container-type: size;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--s-3);
+    height: 100%;
+    padding: var(--s-5);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-2);
+  }
+  .cap {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: var(--s-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .routes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px var(--s-5);
+    margin: 0;
+    padding: 0;
+  }
+  .routes li {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .routes span {
+    color: var(--text-3);
+  }
+  .nums {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--s-4);
+    margin: 0;
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--border);
+  }
+  .nums dd {
+    margin: 0;
+    font-size: var(--text-md);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .nums dt {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+  }
+  @container (max-height: 15rem) {
+    .routes li:nth-child(n + 9) {
+      display: none;
+    }
+  }
+  @container (max-width: 22rem) {
+    .routes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .routes li:nth-child(n + 6) {
+      display: none;
+    }
+  }
+</style>

@@ -1,0 +1,109 @@
+---
+import AYMark from '../identity/AYMark.astro';
+import { nav, person } from '../../data/profile';
+import { buildInfo } from '../../lib/build-info';
+---
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="row">
+      <a class="home" href="/" aria-label={`${person.name} — home`}><AYMark size={30} /></a>
+      <nav aria-label="Footer">
+        <ul role="list">
+          {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+          <li><a href="/resume/">CV</a></li>
+          <li><a href="/legal/">Impressum &amp; privacy</a></li>
+        </ul>
+      </nav>
+      <ul class="ext" role="list">
+        <li><a href={`mailto:${person.email}`}>Email</a></li>
+        <li><a href={person.linkedin} rel="me noopener">LinkedIn</a></li>
+        <li><a href={person.github} rel="me noopener">GitHub</a></li>
+      </ul>
+      <div class="theme-set" data-theme-set hidden>
+        <span class="visually-hidden" id="theme-set-label">Theme</span>
+        <div class="seg" role="group" aria-labelledby="theme-set-label">
+          <button type="button" data-theme-value="dark" aria-pressed="false">Dark</button>
+          <button type="button" data-theme-value="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-value="system" aria-pressed="false">System</button>
+        </div>
+      </div>
+    </div>
+    <p class="base mono">
+      <span>© {buildInfo.year} {person.name} · {person.location}</span>
+      <span>Built {buildInfo.date}{buildInfo.rev && <> · rev {buildInfo.rev}</>}</span>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--border);
+    padding-block: var(--s-5) var(--s-4);
+    background: var(--bg);
+  }
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2) var(--s-6);
+  }
+  .home {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    color: var(--text);
+  }
+  nav {
+    flex: 1 1 auto;
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-4);
+  }
+  li a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  li a:hover {
+    color: var(--text);
+  }
+  .seg > button {
+    min-height: 2.75rem;
+    padding: 0 var(--s-3);
+    font-size: var(--text-xs);
+  }
+  .base {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-1) var(--s-6);
+    justify-content: space-between;
+    margin-top: var(--s-3);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-2xs);
+  }
+  @media (max-width: 40em) {
+    nav {
+      flex-basis: 100%;
+      order: 2;
+    }
+    .ext {
+      order: 3;
+      flex: 1 1 auto;
+    }
+    .theme-set {
+      order: 1;
+      margin-left: auto;
+    }
+  }
+</style>

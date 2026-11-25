@@ -1,0 +1,375 @@
+---
+/**
+ * Real output of src/lib/rideplanner.ts on the synthetic demo graph, computed at build time:
+ * the minimum-time route (α = 0) against the scenic route at the demo defaults, with their scores.
+ * The contour lines are procedural decoration (a sum of Gaussian hills), not terrain or map data.
+ * The two markers leave together and arrive in proportion to the two computed travel times.
+ */
+import data from '../../../data/demo/rideplanner.json';
+import { FASTEST, RidePlanner, contourPath, edgePath, heightField, meanTwist, routePath, type Hill, type RideGraph } from '../../../lib/rideplanner';
+
+const graph = data as unknown as RideGraph;
+const { width: W, height: H } = data.viewBox;
+const { from, to, alpha, beta } = data.defaults;
+const planner = new RidePlanner(graph);
+const fast = planner.fastest(from, to)!;
+const scenic = planner.route(from, to, { ...FASTEST, alpha, beta })!;
+const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+const start = byId.get(from)!;
+const end = byId.get(to)!;
+const base = graph.edges.map((e) => ({ d: edgePath(byId.get(e.a)!, byId.get(e.b)!, e.twist), cls: e.roadClass }));
+const fastD = routePath(graph, fast);
+const scenicD = routePath(graph, scenic);
+
+// Decorative relief: a ridge under the northern pass, a basin under the lake road.
+const hills: Hill[] = [
+  { x: 360, y: 18, h: 1, sx: 190, sy: 78 },
+  { x: 140, y: 62, h: 0.5, sx: 95, sy: 62 },
+  { x: 575, y: 52, h: 0.62, sx: 110, sy: 64 },
+  { x: 384, y: 352, h: -0.55, sx: 175, sy: 54 },
+  { x: 655, y: 335, h: 0.36, sx: 78, sy: 52 },
+  { x: 40, y: 340, h: 0.3, sx: 85, sy: 60 },
+];
+const field = heightField(hills);
+const box = { x0: -40, y0: -30, x1: W + 40, y1: H + 30 };
+const levels = [-0.42, -0.3, -0.18, -0.06, 0.06, 0.18, 0.3, 0.42, 0.54, 0.66, 0.78, 0.9];
+const contours = levels.map((lv, i) => ({ d: contourPath(field, lv, box, 15), index: i % 4 === 3 })).filter((c) => c.d);
+
+const min = (m: number) => Math.round(m);
+const rows = [
+  { key: 'fast', name: 'Fastest', a: 0, r: fast, twist: meanTwist(fast) },
+  { key: 'scenic', name: 'Scenic', a: alpha, r: scenic, twist: meanTwist(scenic) },
+];
+// One shared pass: the slower route takes all of it, the faster one arrives proportionally earlier and waits.
+// Two identically shaped keyframe sets, so keyboard focus can start a fresh single pass.
+const slow = Math.max(fast.minutes, scenic.minutes);
+const pct = (m: number) => ((m / slow) * 100).toFixed(1);
+const frames = (name: string, m: number) => `@keyframes ${name}{0%{offset-distance:0%}${pct(m)}%,100%{offset-distance:100%}}`;
+const css = frames('rpv-fast', fast.minutes) + frames('rpv-scenic', scenic.minutes) + frames('rpv-fast-f', fast.minutes) + frames('rpv-scenic-f', scenic.minutes);
+const label = `Synthetic road graph with ${graph.nodes.length} nodes and ${graph.edges.length} edges over decorative contour lines. Two routes computed by Dijkstra between the same two points: the fastest takes ${min(fast.minutes)} minutes with a mean scenic score of ${fast.meanScenic.toFixed(2)} and curvature ${rows[0]!.twist.toFixed(2)}; the scenic route at alpha ${alpha} takes ${min(scenic.minutes)} minutes with a mean scenic score of ${scenic.meanScenic.toFixed(2)} and curvature ${rows[1]!.twist.toFixed(2)}.`;
+---
+
+<div class="viz" role="img" aria-label={label}>
+  <style is:inline set:html={css} />
+  <div class="in">
+  <svg class="map" viewBox={`-14 -12 ${W + 28} ${H + 24}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+    <g class="topo">
+      {contours.map((c) => <path class:list={{ idx: c.index }} d={c.d} />)}
+    </g>
+    <g class="marks">
+      <path d={`M-8 0h16M0 -8v16M${W - 8} 0h16M${W} -8v16M-8 ${H}h16M0 ${H - 8}v16M${W - 8} ${H}h16M${W} ${H - 8}v16`} />
+    </g>
+    <g class="net">
+      {base.filter((b) => b.cls !== 'motorway').map((b) => <path class={b.cls} d={b.d} />)}
+      {base.filter((b) => b.cls === 'motorway').map((b) => <path class="mw-out" d={b.d} />)}
+      {base.filter((b) => b.cls === 'motorway').map((b) => <path class="mw-in" d={b.d} />)}
+    </g>
+    <path class="r-fast" d={fastD} />
+    <path class="r-scenic-halo" d={scenicD} />
+    <path class="r-scenic" d={scenicD} />
+    <g class="nodes">
+      {graph.nodes.filter((n) => n.id !== from && n.id !== to).map((n) => <circle cx={n.x} cy={n.y} r="3.2" />)}
+    </g>
+    <rect class="pin" x={start.x - 8} y={start.y - 8} width="16" height="16" />
+    <circle class="pin pin--end" cx={end.x} cy={end.y} r="9" />
+    <circle class="runner runner--fast" r="5.5" style={`offset-path:path('${fastD}')`} />
+    <circle class="runner runner--scenic" r="7" style={`offset-path:path('${scenicD}')`} />
+  </svg>
+
+  <div class="scores" aria-hidden="true">
+    <p class="cap">cost = time × (1 + α(1 − scenic) + β·risk)</p>
+    <div class="score">
+      <span class="h"></span>
+      <span class="h num">Time</span>
+      <span class="h">Scenic</span>
+      <span class="h c3">Curvature</span>
+      {
+        rows.map((row) => (
+          <>
+            <span class="name">
+              <svg viewBox="0 0 28 8" class="key">
+                <path class={`r-${row.key}`} d="M0 4H28" />
+              </svg>
+              <b>{row.name}</b>
+              <i>α {row.a}</i>
+            </span>
+            <span class="num v">{min(row.r.minutes)} min</span>
+            <span class="meter">
+              <em><u style={`width:${(row.r.meanScenic * 100).toFixed(1)}%`} /></em>
+              <span class="v">{row.r.meanScenic.toFixed(2)}</span>
+            </span>
+            <span class="meter c3">
+              <em><u style={`width:${(row.twist * 100).toFixed(1)}%`} /></em>
+              <span class="v">{row.twist.toFixed(2)}</span>
+            </span>
+          </>
+        ))
+      }
+    </div>
+    <p class="foot">synthetic graph · {graph.nodes.length} nodes · {graph.edges.length} edges</p>
+  </div>
+  </div>
+</div>
+
+<style>
+  .viz {
+    container-type: inline-size;
+    height: 100%;
+  }
+  .in {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-2);
+    height: 100%;
+    padding: var(--s-3) var(--s-4);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-2);
+  }
+  .map {
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+  .map path,
+  .map circle,
+  .map rect,
+  .key path {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .topo path {
+    stroke: var(--text-3);
+    stroke-width: 1;
+    opacity: 0.2;
+  }
+  .topo .idx {
+    opacity: 0.36;
+  }
+  .marks path {
+    stroke: var(--border-strong);
+    stroke-width: 1;
+  }
+  .net path {
+    stroke: var(--text-3);
+    stroke-width: 1;
+    stroke-linecap: round;
+  }
+  .net .primary {
+    stroke-width: 1.5;
+  }
+  .net .mw-out {
+    stroke-width: 4.5;
+    stroke-linecap: butt;
+  }
+  .net .mw-in {
+    stroke: var(--bg);
+    stroke-width: 2;
+    stroke-linecap: butt;
+  }
+  .r-fast {
+    stroke: var(--text-2);
+    stroke-width: 2;
+    stroke-dasharray: 7 5;
+    stroke-linejoin: round;
+  }
+  .r-scenic-halo {
+    stroke: var(--bg);
+    stroke-width: 7;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .r-scenic {
+    stroke: var(--text);
+    stroke-width: 3;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .nodes circle {
+    fill: var(--bg);
+    stroke: var(--text-3);
+    stroke-width: 1;
+  }
+  .map .pin {
+    fill: var(--text);
+    stroke: var(--bg);
+    stroke-width: 2;
+  }
+  .map .pin--end {
+    fill: var(--bg);
+    stroke: var(--text);
+    stroke-width: 3;
+  }
+  /* Moving markers: hidden unless motion is welcome and offset-path is supported. */
+  .runner {
+    display: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (offset-path: path('M0 0L1 1')) {
+      .map .runner {
+        display: block;
+        offset-rotate: 0deg;
+        offset-distance: 0%;
+        fill: var(--bg);
+        stroke: var(--text);
+        stroke-width: 2;
+        /* One pass of 5 s, ending at the destination. It loops only while the card is hovered. */
+        animation: rpv-scenic 5s linear 1 both;
+      }
+      .map .runner--fast {
+        stroke: var(--text-2);
+        stroke-width: 1.5;
+        animation-name: rpv-fast;
+      }
+      :global(.card):focus-within .runner--scenic,
+      :global(.case-visual):focus-within .runner--scenic {
+        animation-name: rpv-scenic-f;
+      }
+      :global(.card):focus-within .runner--fast,
+      :global(.case-visual):focus-within .runner--fast {
+        animation-name: rpv-fast-f;
+      }
+      :global(.card):hover .runner,
+      .viz:hover .runner {
+        animation-iteration-count: infinite;
+      }
+    }
+  }
+
+  .scores {
+    display: grid;
+    gap: var(--s-2);
+    flex: none;
+    min-width: 0;
+  }
+  .cap,
+  .foot {
+    display: none;
+    letter-spacing: 0.02em;
+    color: var(--text-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .score {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 3px var(--s-4);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .h {
+    color: var(--text-3);
+    font-size: 0.625rem;
+    letter-spacing: 0.08em;
+  }
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .v {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .name {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .name b {
+    font-weight: 500;
+    color: var(--text);
+  }
+  .name i {
+    display: none;
+    font-style: normal;
+    text-transform: none;
+    color: var(--text-3);
+  }
+  .key {
+    width: 28px;
+    height: 8px;
+    flex: none;
+    overflow: visible;
+  }
+  .meter {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-width: 0;
+  }
+  .meter em {
+    flex: 1;
+    height: 5px;
+    min-width: 1.5rem;
+    border: 1px solid var(--border-strong);
+  }
+  .meter u {
+    display: block;
+    height: 100%;
+    background: var(--text-2);
+  }
+  .c3 {
+    display: none;
+  }
+
+  /* Medium: homepage cards and wider. Adds the curvature column and the α values. */
+  @container (min-width: 30rem) {
+    .in {
+      padding: var(--s-4) var(--s-5);
+      gap: var(--s-3);
+    }
+    .score {
+      grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1fr) minmax(0, 1fr);
+      padding-top: var(--s-2);
+      border-top: 1px solid var(--border);
+    }
+    .c3 {
+      display: flex;
+    }
+    .h.c3 {
+      display: block;
+    }
+    .name i {
+      display: inline;
+    }
+  }
+  /* Wide: the case-study hero. The scores become a panel beside the map. */
+  @container (min-width: 58rem) {
+    .in {
+      flex-direction: row;
+      align-items: stretch;
+      gap: var(--s-6);
+      padding: var(--s-5) var(--s-6);
+    }
+    .map {
+      height: auto;
+    }
+    .scores {
+      width: 25rem;
+      align-content: center;
+      gap: var(--s-4);
+      padding-left: var(--s-6);
+      border-left: 1px solid var(--border);
+    }
+    .cap,
+    .foot {
+      display: block;
+    }
+    .cap {
+      color: var(--text-2);
+    }
+    .score {
+      grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr);
+      gap: var(--s-3) var(--s-4);
+      padding-block: var(--s-4);
+      border-block: 1px solid var(--border);
+    }
+  }
+</style>

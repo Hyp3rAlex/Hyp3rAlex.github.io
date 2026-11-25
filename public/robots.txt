@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hyp3ralex.github.io/sitemap-index.xml

@@ -1,0 +1,211 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import ProjectCard from '../../components/projects/ProjectCard.astro';
+import { CATEGORIES } from '../../content.config';
+import allow from '../../data/repos.json';
+import meta from '../../data/github-metadata.json';
+
+const projects = (await getCollection('projects', (p) => !p.data.draft)).sort((a, b) => a.data.order - b.data.order);
+const repos = meta.repos as unknown as Record<string, { url: string; language: string | null; pushedAt: string; description: string | null } | undefined>;
+const archive = allow.repos.filter((r) => r.kind === 'archive');
+const filters = [
+  { id: 'all', label: 'All' },
+  ...Object.entries(CATEGORIES).map(([id, label]) => ({ id, label })),
+  { id: 'team', label: 'Team' },
+  { id: 'solo', label: 'Individual' },
+];
+---
+
+<Base
+  title="Work"
+  description="All of Alexander Yordanov's substantive projects: backend, data and automation, and engineering software — each with a detailed, evidence-backed case study."
+>
+  <section class="wrap page-head">
+    <p class="label">Work</p>
+    <h1>Work</h1>
+    <p class="lede">
+      {projects.length} engineering projects across backend, data and engineering software — each with its architecture,
+      a working demo and the source.
+    </p>
+  </section>
+
+  <section class="wrap" aria-label="Projects">
+    <project-filter>
+      <div class="filter-bar no-print" hidden>
+        <span class="label" id="filter-label">Filter</span>
+        <div class="seg" role="group" aria-labelledby="filter-label">
+          {
+            filters.map((f) => (
+              <button type="button" data-filter={f.id} aria-pressed={f.id === 'all' ? 'true' : 'false'}>
+                {f.label}
+              </button>
+            ))
+          }
+        </div>
+        <p class="filter-status mono" role="status" aria-live="polite"></p>
+      </div>
+
+      <ul class="plist" role="list">
+        {
+          projects.map((p, i) => (
+            <li data-category={[p.data.category, ...p.data.alsoIn].join(' ')} data-team={p.data.team ? 'team' : 'solo'}>
+              <ProjectCard project={p} index={i} heading="h2" />
+            </li>
+          ))
+        }
+      </ul>
+      <p class="none" hidden>No project matches this filter.</p>
+    </project-filter>
+  </section>
+
+  <section class="section wrap archive" aria-labelledby="arch-h">
+    <header class="sec-head">
+      <p class="label">Repository index</p>
+      <h2 id="arch-h">Everything else on GitHub</h2>
+      <p>
+        For completeness: the remaining public repositories. They are practice or profile repositories and do not
+        justify a case study.
+      </p>
+    </header>
+    <div class="table-scroll" tabindex="0" role="group" aria-label="Other public repositories">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Repository</th>
+            <th scope="col">What it is</th>
+            <th scope="col">Language</th>
+            <th scope="col">Last push</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            archive.map((r) => {
+              const m = repos[r.fullName];
+              return (
+                <tr>
+                  <th scope="row">
+                    <a href={m?.url ?? `https://github.com/${r.fullName}`} rel="noopener">{r.fullName}</a>
+                  </th>
+                  <td>{r.note}</td>
+                  <td>{m?.language ?? '—'}</td>
+                  <td>{m?.pushedAt ? m.pushedAt.slice(0, 10) : '—'}</td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+    </div>
+    {
+      meta.fetchedAt && (
+        <p class="mono cache-note">
+          Repository metadata cached from the GitHub API on {meta.fetchedAt.slice(0, 10)}. “Last push” is a repository
+          timestamp, not a measure of progress.
+        </p>
+      )
+    }
+  </section>
+</Base>
+
+<script>
+  class ProjectFilter extends HTMLElement {
+    connectedCallback() {
+      const bar = this.querySelector<HTMLElement>('.filter-bar')!;
+      const status = this.querySelector<HTMLElement>('.filter-status')!;
+      const none = this.querySelector<HTMLElement>('.none')!;
+      const items = [...this.querySelectorAll<HTMLElement>('.plist > li')];
+      const buttons = [...this.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+      const valid = new Set(buttons.map((b) => b.dataset.filter!));
+      bar.hidden = false;
+
+      const apply = (id: string, push: boolean) => {
+        if (!valid.has(id)) id = 'all';
+        let shown = 0;
+        for (const li of items) {
+          const match =
+            id === 'all' ||
+            li.dataset.team === id ||
+            (li.dataset.category ?? '').split(' ').includes(id);
+          li.hidden = !match;
+          if (match) shown += 1;
+        }
+        for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === id));
+        none.hidden = shown > 0;
+        status.textContent = `${shown} of ${items.length} shown`;
+        if (push) {
+          const url = new URL(location.href);
+          if (id === 'all') url.searchParams.delete('filter');
+          else url.searchParams.set('filter', id);
+          history.replaceState(null, '', url);
+        }
+      };
+
+      for (const b of buttons) b.addEventListener('click', () => apply(b.dataset.filter!, true));
+      apply(new URL(location.href).searchParams.get('filter') ?? 'all', false);
+    }
+  }
+  customElements.define('project-filter', ProjectFilter);
+</script>
+
+<style>
+  .page-head {
+    padding-block: clamp(3rem, 2rem + 5vw, 6rem) var(--s-7);
+  }
+  .page-head h1 {
+    margin: var(--s-4) 0 var(--s-5);
+    font-size: clamp(3.5rem, 1rem + 11vw, 9rem);
+    letter-spacing: -0.055em;
+    line-height: 0.88;
+  }
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-3) var(--s-4);
+    padding-block: var(--s-4);
+    margin-bottom: var(--s-5);
+    border-block: 1px solid var(--border);
+  }
+  .filter-bar[hidden] {
+    display: none;
+  }
+  .filter-status {
+    margin-left: auto;
+  }
+  .plist {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-5);
+  }
+  .plist > li[hidden] {
+    display: none;
+  }
+  .none {
+    padding: var(--s-7) 0;
+    color: var(--text-2);
+  }
+  @media (min-width: 44em) {
+    .plist {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (min-width: 76em) {
+    .plist {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  .archive {
+    margin-top: var(--section);
+    border-top: 1px solid var(--border);
+  }
+  .archive th[scope='row'] {
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .cache-note {
+    margin-top: var(--s-4);
+    text-transform: none;
+    letter-spacing: 0.01em;
+  }
+</style>

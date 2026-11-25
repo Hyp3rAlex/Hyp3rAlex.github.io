@@ -1,0 +1,309 @@
+---
+/**
+ * Negotiation rounds of the shipped S01 simulator re-run (final agent vs the starter kit's scripted
+ * supplier): two lanes converging to the agreement point, with the checks recorded for the accepted
+ * sheet. Rendered at build time from src/data/demo/tacto.json.
+ * Lines are an SVG stretched to the plot; points and labels are HTML so text never scales.
+ * The round-by-round reveal is CSS only; with reduced motion the final state is shown statically.
+ */
+import data from '../../../data/demo/tacto.json';
+import { acceptPoint, priceSeries, CHECK_LABELS, type ReplayRun } from '../../../lib/tacto';
+
+const run = data.run as unknown as ReplayRun;
+const pts = priceSeries(run);
+const sup = pts.filter((p) => p.actor === 'supplier');
+const buy = pts.filter((p) => p.actor === 'buyer');
+const acc = acceptPoint(run)!;
+const rounds = Math.max(...pts.map((p) => p.round));
+const lo = 13.2;
+const hi = 18.1;
+const X0 = 6;
+const XW = 70;
+const x = (r: number) => X0 + (r / rounds) * XW;
+const y = (p: number) => ((hi - p) / (hi - lo)) * 100;
+const xy = (p: (typeof pts)[number]) => `${x(p.round).toFixed(2)},${y(p.price).toFixed(2)}`;
+const line = (s: typeof pts) => s.map(xy).join(' ');
+/** Area between the two offers from the buyer's first round on: the gap that closes. */
+const gap = [...sup.filter((p) => p.round >= buy[0]!.round).map(xy), ...[...buy].reverse().map(xy)].join(' ');
+const checks = acc.sheet.checks;
+const label = `Negotiation rounds in a simulator re-run on the starter kit's sample case S01. Supplier offers per round: ${sup.map((p) => p.price.toFixed(2)).join(', ')}. Buyer agent offers: ${buy.map((p) => p.price.toFixed(2)).join(', ')}. The offers converge and the buyer agent accepts the supplier's final offer of ${acc.price.toFixed(2)} in round ${acc.round}: agreement. Checks on the accepted sheet: ${checks.map((c) => `${CHECK_LABELS[c.check] ?? c.check} ${c.ok ? 'passed' : 'failed'}`).join(', ')}; this case has no must-haves.`;
+---
+
+<div class="viz" role="img" aria-label={label} style={`--rounds:${rounds}`}>
+  <p class="cap" aria-hidden="true">
+    <span class="lanes">
+      <span class="lane"><i class="pt pt-s"></i>supplier</span>
+      <span class="lane"><i class="pt pt-b"></i>buyer agent</span>
+    </span>
+    <span class="cap-r"><span class="cap-long">simulator re-run · </span>case S01</span>
+  </p>
+  <div class="plot" aria-hidden="true">
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+      <polygon class="gap" points={gap}></polygon>
+      <polyline class="ln ln-s" points={line(sup)}></polyline>
+      <polyline class="ln ln-b" points={line(buy)}></polyline>
+    </svg>
+    {sup.map((p) => <i class="pt pt-s rv" style={`left:${x(p.round)}%;top:${y(p.price)}%;--r:${p.round}`} />)}
+    {buy.map((p) => <i class="pt pt-b rv" style={`left:${x(p.round)}%;top:${y(p.price)}%;--r:${p.round}`} />)}
+    <i class="pt pt-acc rv" style={`left:${x(acc.round)}%;top:${y(acc.price)}%;--r:${rounds + 0.6}`}></i>
+    <span class="lb lb-s rv" style={`left:${x(0)}%;top:${y(sup[0]!.price)}%;--r:0`}>{sup[0]!.price.toFixed(2)}</span>
+    <span class="lb lb-b rv" style={`left:${x(buy[0]!.round)}%;top:${y(buy[0]!.price)}%;--r:${buy[0]!.round}`}>{buy[0]!.price.toFixed(2)}</span>
+    <span class="lb lb-acc rv" style={`left:${x(acc.round)}%;top:${y(acc.price)}%;--r:${rounds + 0.6}`}><b>deal {acc.price.toFixed(2)}</b><em>round {acc.round}</em></span>
+    {
+      Array.from({ length: rounds + 1 }, (_, r) => (
+        <span class="tick" style={`left:${x(r)}%`}>
+          {r}
+        </span>
+      ))
+    }
+  </div>
+  <ul class="checks" role="list" aria-hidden="true">
+    {
+      checks.map((c, i) => (
+        <li class="rv" data-ok={String(c.ok)} style={`--r:${rounds + 1 + i * 0.4}`}>
+          <span class="mk">{c.ok ? '✓' : '✕'}</span>
+          {CHECK_LABELS[c.check] ?? c.check}
+        </li>
+      ))
+    }
+    <li data-ok="na" class="opt rv" style={`--r:${rounds + 1.8}`}><span class="mk">–</span>no must-haves in S01</li>
+    <li class="state rv" style={`--r:${rounds + 0.6}`}>agreed</li>
+  </ul>
+</div>
+
+<style>
+  .viz {
+    --step: 420ms;
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-3);
+    height: 100%;
+    padding: var(--s-4) var(--s-5);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-2);
+  }
+  .cap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s-3);
+    padding-bottom: var(--s-2);
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .lanes {
+    display: inline-flex;
+    gap: var(--s-4);
+  }
+  .lane {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    color: var(--text);
+  }
+  .lane .pt {
+    position: static;
+    transform: none;
+  }
+  .cap-r {
+    color: var(--warn);
+  }
+  .plot {
+    position: relative;
+    flex: 1;
+    min-height: 4.5rem;
+    margin: 0.5rem 0 1.3rem;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .gap {
+    fill: var(--glow);
+  }
+  .ln {
+    fill: none;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+  }
+  .ln-s {
+    stroke: var(--info);
+    stroke-dasharray: 5 3;
+  }
+  .ln-b {
+    stroke: var(--text);
+  }
+  .pt {
+    position: absolute;
+    display: inline-block;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    transform: translate(-50%, -50%);
+  }
+  .pt-s {
+    background: var(--info);
+  }
+  .pt-b {
+    background: var(--text);
+    border-radius: 50%;
+  }
+  .pt-acc {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--ok);
+    border-radius: 50%;
+  }
+  .lb {
+    position: absolute;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .lb-s {
+    transform: translate(-0.5em, -1.9em);
+    color: var(--info);
+  }
+  .lb-b {
+    transform: translate(-50%, -1.9em);
+    color: var(--text);
+  }
+  .lb-acc {
+    display: grid;
+    transform: translate(1.5em, -50%);
+    padding: 0.25em 0.6em;
+    border: 1px solid var(--ok);
+    border-radius: var(--r-1);
+    background: var(--bg);
+    color: var(--ok);
+  }
+  .lb-acc b {
+    font-weight: 500;
+  }
+  .lb-acc em {
+    font-style: normal;
+    color: var(--text-3);
+  }
+  .tick {
+    position: absolute;
+    top: 100%;
+    transform: translate(-50%, 0.35em);
+    color: var(--text-3);
+  }
+  .tick:first-of-type::before {
+    content: 'round ';
+    position: absolute;
+    right: 100%;
+    white-space: pre;
+  }
+  .checks {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--s-1) var(--s-4);
+    margin: 0;
+    padding: var(--s-2) 0 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .checks li {
+    display: inline-flex;
+    gap: 0.45em;
+    align-items: baseline;
+  }
+  .checks [data-ok='true'] .mk {
+    color: var(--ok);
+  }
+  .checks [data-ok='false'] .mk {
+    color: var(--fail);
+  }
+  .checks [data-ok='na'] {
+    color: var(--text-3);
+  }
+  .checks .state {
+    margin-left: auto;
+    padding: 0 0.5em;
+    border: 1px solid var(--ok);
+    border-radius: var(--r-1);
+    color: var(--ok);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .checks .state::before {
+    content: '●';
+    font-size: 0.7em;
+  }
+  @container (max-width: 34rem) {
+    .checks .opt {
+      display: none;
+    }
+  }
+  @container (max-width: 26rem) {
+    .lb-acc em,
+    .cap-long,
+    .checks li:first-child {
+      display: none;
+    }
+    .tick:first-of-type::before {
+      content: none;
+    }
+    .lb-acc {
+      transform: translate(1.2em, -50%);
+      padding: 0.15em 0.4em;
+    }
+    .viz {
+      padding: var(--s-3) var(--s-4);
+      gap: var(--s-2);
+    }
+    .lanes,
+    .checks {
+      gap: var(--s-1) var(--s-3);
+    }
+    .plot {
+      margin: 0.4rem 0 1.2rem;
+    }
+  }
+
+  /* Round-by-round reveal. Each element appears at its round; lines are wiped in step with them. */
+  @media (prefers-reduced-motion: no-preference) {
+    .rv {
+      animation: tq-in 320ms var(--ease-out) both;
+      animation-delay: calc(var(--r) * var(--step) + 300ms);
+    }
+    svg {
+      animation: tq-wipe calc(var(--rounds) * var(--step)) linear 300ms both;
+    }
+    .gap {
+      animation: tq-in 600ms ease both;
+      animation-delay: calc(var(--rounds) * var(--step) + 300ms);
+    }
+    /* Inside a scroll-reveal block, wait until it has entered the viewport. */
+    :global(.js [data-reveal]:not(.is-in)) .rv,
+    :global(.js [data-reveal]:not(.is-in)) svg,
+    :global(.js [data-reveal]:not(.is-in)) .gap {
+      animation-play-state: paused;
+    }
+  }
+  @keyframes tq-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes tq-wipe {
+    from {
+      clip-path: inset(-20% 94% -20% 0);
+    }
+    to {
+      clip-path: inset(-20% 24% -20% 0);
+    }
+  }
+</style>

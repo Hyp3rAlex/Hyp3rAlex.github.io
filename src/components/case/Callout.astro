@@ -1,0 +1,44 @@
+---
+/** Short flagged note. kind: limit (limitation / honesty note), note (neutral), team (attribution). */
+interface Props {
+  kind?: 'limit' | 'note' | 'team';
+  title?: string;
+}
+const { kind = 'note', title } = Astro.props;
+const label = title ?? { limit: 'Limitation', note: 'Note', team: 'Attribution' }[kind];
+---
+
+<aside class="callout" data-kind={kind}>
+  <p class="mono callout-label">{label}</p>
+  <div class="callout-body"><slot /></div>
+</aside>
+
+<style>
+  .callout {
+    padding: var(--s-4) var(--s-5);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--text-3);
+    background: var(--surface);
+    border-radius: 0 var(--r-2) var(--r-2) 0;
+  }
+  .callout[data-kind='limit'] {
+    border-left-color: var(--warn);
+  }
+  .callout[data-kind='team'] {
+    border-left-color: var(--info);
+  }
+  .callout-label {
+    margin-bottom: var(--s-2);
+    color: var(--text);
+  }
+  .callout-body {
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+  .callout-body :global(p) {
+    color: var(--text-2);
+  }
+  .callout-body :global(p + p) {
+    margin-top: var(--s-3);
+  }
+</style>

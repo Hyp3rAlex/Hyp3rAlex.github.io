@@ -1,0 +1,180 @@
+---
+/**
+ * Executive overview at the top of a case study: the 20–30 second read for a recruiter.
+ * Everything in it must also be supported by the detailed sections below.
+ */
+interface Props {
+  problem: string;
+  solution: string;
+  role: string;
+  contribution: string;
+  outcomes: string[];
+  tech: string[];
+  repo?: string;
+  demo?: boolean;
+}
+const { problem, solution, role, contribution, outcomes, tech, repo, demo = true } = Astro.props;
+---
+
+<section class="brief full corner-marks" aria-label="Project overview">
+  <p class="brief-tag mono"><b>Overview</b><span>30-second read</span></p>
+  <div class="brief-grid">
+    <div class="brief-main">
+      <dl>
+        <div>
+          <dt>Problem</dt>
+          <dd>{problem}</dd>
+        </div>
+        <div>
+          <dt>Solution</dt>
+          <dd>{solution}</dd>
+        </div>
+      </dl>
+    </div>
+    <div class="brief-side">
+      <dl>
+        <div>
+          <dt>My role</dt>
+          <dd class="strong">{role}</dd>
+        </div>
+        <div>
+          <dt>My contribution</dt>
+          <dd>{contribution}</dd>
+        </div>
+      </dl>
+    </div>
+    <div class="brief-out">
+      <p class="k">Verified outcomes</p>
+      <ul>
+        {outcomes.map((o) => <li>{o}</li>)}
+      </ul>
+    </div>
+    <div class="brief-foot">
+      <p class="tech mono">{tech.join(' · ')}</p>
+      <p class="actions no-print">
+        {demo && <a class="btn btn--primary btn--sm" href="#demo">Try the demo <span class="arrow" aria-hidden="true">↓</span></a>}
+        {repo && <a class="btn btn--sm" href={`https://github.com/${repo}`} rel="noopener">Source <span class="arrow" aria-hidden="true">↗</span></a>}
+      </p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .brief {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    margin-bottom: var(--s-8);
+  }
+  .brief-tag {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding: var(--s-3) var(--s-5);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-3);
+  }
+  .brief-tag b {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .brief-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .brief-grid > div {
+    padding: var(--s-5);
+    border-bottom: 1px solid var(--border);
+    min-width: 0;
+  }
+  .brief-grid > .brief-foot {
+    border-bottom: 0;
+  }
+  dl {
+    display: grid;
+    gap: var(--s-5);
+    margin: 0;
+  }
+  dt,
+  .k {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: var(--s-2);
+  }
+  dd {
+    margin: 0;
+    font-size: var(--text-base);
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  .brief-main dd {
+    font-size: var(--text-md);
+    color: var(--text);
+  }
+  dd.strong {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 560;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    color: var(--text);
+  }
+  .brief-out ul {
+    display: grid;
+    gap: var(--s-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .brief-out li {
+    position: relative;
+    padding-left: 1.4em;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--text);
+  }
+  .brief-out li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 0.7em;
+    height: 1px;
+    background: var(--text-2);
+  }
+  .brief-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+  .tech {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    color: var(--text-2);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+  @media (min-width: 56em) {
+    .brief-grid {
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    }
+    .brief-main {
+      border-right: 1px solid var(--border);
+    }
+    .brief-out,
+    .brief-foot {
+      grid-column: 1 / -1;
+    }
+    .brief-out ul {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: var(--s-6);
+    }
+  }
+</style>

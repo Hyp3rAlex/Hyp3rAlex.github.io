@@ -1,0 +1,223 @@
+---
+/**
+ * System diagram of the Demographics Service, derived from the audited source at revision 1bf9c87.
+ * Arrows show the direction data moves. Feature counts are from the live layer on 25 Nov 2026.
+ * Two drawings with the same facts: a horizontal one for wide screens and a vertical one for phones;
+ * shared CSS (.dg-desktop / .dg-mobile) shows exactly one.
+ */
+interface Node {
+  title: string;
+  subs: string[];
+  kind?: 'ext' | 'hi';
+  /** Label on the arrow leaving this node. */
+  out?: string;
+  inTxn?: boolean;
+  tag?: string;
+}
+const NODES: Node[] = [
+  { title: 'Scheduler', subs: ['@Scheduled fixedRate 3,600,000 ms', 'runs at startup, then hourly'] },
+  { title: 'ArcGIS client', subs: ['WebClient + block()', 'page size 2,000, stops on short page', 'timeouts 5 s / 10 s'], out: '2 × GET …/query, offset 0 / 2000', inTxn: true },
+  { title: 'ArcGIS FeatureServer', subs: ['USA_Census_Counties / layer 0', '3,144 features'], kind: 'ext', tag: 'EXTERNAL · PUBLIC', out: '2,000 + 1,144 features', inTxn: true },
+  { title: 'Aggregation', subs: ['drop null name / population', 'groupingBy + summingLong', '3,135 summed, 9 skipped → 50 rows'], inTxn: true },
+  { title: 'Replace', subs: ['deleteAllInBatch()', 'save() per state', 'one shared Instant.now()'], kind: 'hi', out: 'commit', inTxn: true },
+  { title: 'PostgreSQL 15', subs: ['table state_population', 'state_name PK, population,', 'updated_at'], out: 'findAll() · findByStateName()' },
+  { title: 'REST controller · port 8080', subs: ['GET /api/states → 200 array', 'GET /api/states/{stateName}', '→ 200 object | 404 empty body'], out: 'JSON' },
+  { title: 'HTTP client', subs: ['curl, browser, … · no auth'] },
+];
+const W = 330;
+const LINE = 18;
+const GAP = 40;
+let y = 8;
+const laid = NODES.map((n, i) => {
+  // The transaction band opens above its first node and needs room for its label.
+  if (n.inTxn && !NODES[i - 1]?.inTxn) y += 22;
+  const tagH = n.tag ? 16 : 0;
+  const h = 22 + tagH + LINE * n.subs.length + 12;
+  const box = { ...n, y, h, tagH, x: n.inTxn ? 20 : 10, w: n.inTxn ? W - 40 : W - 20 };
+  y += h + GAP;
+  if (n.inTxn && !NODES[i + 1]?.inTxn) y += 10;
+  return box;
+});
+const H = y - GAP + 8;
+const txn = laid.filter((n) => n.inTxn);
+const txnTop = txn[0]!.y - 30;
+const txnBottom = txn[txn.length - 1]!.y + txn[txn.length - 1]!.h + 10;
+---
+
+<div class="dg-desktop has-mobile">
+<svg class="dm-arch" viewBox="0 0 768 470" role="img" aria-labelledby="dm-arch-t dm-arch-d" >
+  <title id="dm-arch-t">Demographics Service data flow</title>
+  <desc id="dm-arch-d">
+    Write path: a Spring scheduler fires at startup and then every hour. It calls one transactional service method. Inside it, the ArcGIS
+    client issues two paged GET requests of 2,000 records to the external ArcGIS FeatureServer and receives 2,000 plus 1,144 features; the
+    aggregation step drops records with a null state name or population and sums population per state, summing 3,135 of the 3,144 records into 50
+    rows; the replace step deletes all rows and saves the new ones. The result is committed to the PostgreSQL 15 table state_population.
+    Read path: the REST controller reads that table and serves two GET endpoints to an HTTP client on port 8080.
+  </desc>
+  <defs>
+    <marker id="dm-arch-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="dg-head" d="M0 0 10 5 0 10z"></path>
+    </marker>
+  </defs>
+
+  <!-- External system -->
+  <rect class="dg-box dg-box--ext" x="150" y="14" width="330" height="74" rx="4"></rect>
+  <text class="dg-sub" x="164" y="32">EXTERNAL · PUBLIC, NO TOKEN</text>
+  <text class="dg-title" x="164" y="52">ArcGIS FeatureServer</text>
+  <text class="dg-sub" x="164" y="70">USA_Census_Counties / layer 0 · 3,144 features</text>
+
+  <!-- request up, response down -->
+  <path class="dg-flow dg-flow--dash" d="M262 165V90" marker-end="url(#dm-arch-head)"></path>
+  <path class="dg-flow" d="M310 88v75" marker-end="url(#dm-arch-head)"></path>
+  <text class="dg-sub" x="252" y="122" text-anchor="end">2 × GET …/query</text>
+  <text class="dg-sub" x="252" y="136" text-anchor="end">resultOffset 0, 2000</text>
+  <text class="dg-sub" x="322" y="122">2,000 + 1,144 features</text>
+  <text class="dg-sub" x="322" y="136">fields: state_name, population</text>
+
+  <!-- Transaction boundary -->
+  <rect class="dm-txn" x="194" y="150" width="560" height="158" rx="4"></rect>
+  <text class="dg-sub" x="206" y="294">updateStatePopulations() · one @Transactional call</text>
+
+  <text class="dg-sub" x="16" y="152">WRITE PATH</text>
+
+  <!-- Scheduler -->
+  <rect class="dg-box" x="16" y="165" width="160" height="100" rx="4"></rect>
+  <text class="dg-title" x="28" y="186">Scheduler</text>
+  <text class="dg-sub" x="28" y="205">@Scheduled fixedRate</text>
+  <text class="dg-sub" x="28" y="220">3,600,000 ms</text>
+  <text class="dg-sub" x="28" y="235">no initial delay:</text>
+  <text class="dg-sub" x="28" y="250">startup, then hourly</text>
+
+  <!-- ArcGIS client -->
+  <rect class="dg-box" x="206" y="165" width="160" height="100" rx="4"></rect>
+  <text class="dg-title" x="218" y="186">ArcGIS client</text>
+  <text class="dg-sub" x="218" y="205">WebClient + block()</text>
+  <text class="dg-sub" x="218" y="220">page size 2,000</text>
+  <text class="dg-sub" x="218" y="235">stops on a short page</text>
+  <text class="dg-sub" x="218" y="250">timeouts 5 s / 10 s</text>
+
+  <!-- Aggregation -->
+  <rect class="dg-box" x="394" y="165" width="160" height="100" rx="4"></rect>
+  <text class="dg-title" x="406" y="186">Aggregation</text>
+  <text class="dg-sub" x="406" y="205">drop null name / pop</text>
+  <text class="dg-sub" x="406" y="220">groupingBy(stateName,</text>
+  <text class="dg-sub" x="406" y="235">  summingLong(pop))</text>
+  <text class="dg-sub" x="406" y="250">3,135 summed → 50 rows</text>
+
+  <!-- Replace -->
+  <rect class="dg-box dg-box--hi" x="582" y="165" width="160" height="100" rx="4"></rect>
+  <text class="dg-title" x="594" y="186">Replace</text>
+  <text class="dg-sub" x="594" y="205">deleteAllInBatch()</text>
+  <text class="dg-sub" x="594" y="220">save() per state</text>
+  <text class="dg-sub" x="594" y="235">one Instant.now()</text>
+  <text class="dg-sub" x="594" y="250">shared by all rows</text>
+
+  <path class="dg-flow" d="M176 215h28" marker-end="url(#dm-arch-head)"></path>
+  <path class="dg-flow" d="M366 215h26" marker-end="url(#dm-arch-head)"></path>
+  <path class="dg-flow" d="M554 215h26" marker-end="url(#dm-arch-head)"></path>
+
+  <!-- Commit -->
+  <path class="dg-flow" d="M662 265v91" marker-end="url(#dm-arch-head)"></path>
+  <text class="dg-sub" x="652" y="336" text-anchor="end">commit</text>
+
+  <text class="dg-sub" x="16" y="345">READ PATH</text>
+
+  <!-- PostgreSQL -->
+  <rect class="dg-box" x="582" y="358" width="160" height="98" rx="4"></rect>
+  <text class="dg-title" x="594" y="379">PostgreSQL 15</text>
+  <text class="dg-sub" x="594" y="398">state_population</text>
+  <text class="dg-sub" x="594" y="413">state_name  PK</text>
+  <text class="dg-sub" x="594" y="428">population</text>
+  <text class="dg-sub" x="594" y="443">updated_at</text>
+
+  <!-- Controller -->
+  <rect class="dg-box" x="254" y="358" width="256" height="98" rx="4"></rect>
+  <text class="dg-title" x="266" y="379">REST controller · port 8080</text>
+  <text class="dg-sub" x="266" y="398">GET /api/states → 200 array</text>
+  <text class="dg-sub" x="266" y="413">GET /api/states/&#123;stateName&#125;</text>
+  <text class="dg-sub" x="266" y="428">  → 200 object | 404 empty body</text>
+  <text class="dg-sub" x="266" y="443">findAll() · findByStateName()</text>
+
+  <!-- Client -->
+  <rect class="dg-box" x="16" y="358" width="160" height="98" rx="4"></rect>
+  <text class="dg-title" x="28" y="379">HTTP client</text>
+  <text class="dg-sub" x="28" y="398">curl, browser, …</text>
+  <text class="dg-sub" x="28" y="413">no auth, no paging</text>
+
+  <path class="dg-flow" d="M582 407h-70" marker-end="url(#dm-arch-head)"></path>
+  <text class="dg-sub" x="547" y="398" text-anchor="middle">rows</text>
+  <path class="dg-flow" d="M254 407h-76" marker-end="url(#dm-arch-head)"></path>
+  <text class="dg-sub" x="216" y="398" text-anchor="middle">JSON</text>
+</svg>
+</div>
+
+<div class="dg-mobile">
+  <svg class="dm-arch-m" viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="dm-archm-t dm-archm-d">
+    <title id="dm-archm-t">Demographics Service data flow</title>
+    <desc id="dm-archm-d">
+      Top to bottom: the scheduler runs at startup and hourly. Inside one transactional call, the ArcGIS client sends two paged GET requests
+      to the external ArcGIS FeatureServer, receives 2,000 plus 1,144 features, the aggregation drops null records and sums population per
+      state (3,135 of 3,144 records) into 50 rows, and the replace step deletes and re-inserts all rows. The commit lands in the PostgreSQL 15 table
+      state_population, which the REST controller reads to serve two GET endpoints as JSON to an HTTP client.
+    </desc>
+    <defs>
+      <marker id="dm-archm-head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path class="dg-head" d="M0 0 10 5 0 10z"></path>
+      </marker>
+    </defs>
+    <rect class="dm-txn" x="4" y={txnTop} width={W - 8} height={txnBottom - txnTop} rx="4"></rect>
+    <text class="dm-m-sub" x="54" y={txnTop + 19}>one @Transactional call</text>
+    {
+      laid.map((n, i) => (
+        <g>
+          <rect class:list={['dg-box', { 'dg-box--ext': n.kind === 'ext', 'dg-box--hi': n.kind === 'hi' }]} x={n.x} y={n.y} width={n.w} height={n.h} rx="4" />
+          {n.tag && <text class="dm-m-tag" x={n.x + 12} y={n.y + 18}>{n.tag}</text>}
+          <text class="dm-m-title" x={n.x + 12} y={n.y + n.tagH + 23}>{n.title}</text>
+          {n.subs.map((t, k) => <text class="dm-m-sub" x={n.x + 12} y={n.y + n.tagH + 43 + k * LINE}>{t}</text>)}
+          {i < laid.length - 1 && (
+            <>
+              <path class="dg-flow" d={`M40 ${n.y + n.h}V${laid[i + 1]!.y - 2}`} marker-end="url(#dm-archm-head)" />
+              {n.out && <text class="dm-m-sub" x="54" y={(n.y + n.h + laid[i + 1]!.y) / 2 + 4}>{n.out}</text>}
+            </>
+          )}
+        </g>
+      ))
+    }
+  </svg>
+</div>
+
+
+<style>
+  .dm-txn {
+    fill: var(--raised);
+    stroke: var(--border);
+    stroke-width: 1;
+  }
+  text {
+    white-space: pre;
+  }
+  .dm-arch-m {
+    display: block;
+    width: 100%;
+    max-width: 26rem;
+    height: auto;
+    margin-inline: auto;
+  }
+  .dm-m-title {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    fill: var(--text);
+  }
+  .dm-m-sub {
+    font-family: var(--font-mono);
+    font-size: 12.6px;
+    fill: var(--text-2);
+  }
+  .dm-m-tag {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    fill: var(--text-3);
+  }
+</style>

@@ -1,0 +1,133 @@
+---
+/**
+ * Transition between the hero and the work grid: a real signal, not an ornament.
+ * It plots vehicle speed from one synthetic LongiSafe scenario (the frozen-speed-signal case) across the
+ * page width, with the fault window marked, and links to the case study it comes from.
+ */
+import data from '../../data/demo/longisafe.json';
+
+type Scenario = (typeof data.scenarios)[number];
+const sc = (data.scenarios.find((s) => s.id === 'S10') ?? data.scenarios[0]) as Scenario;
+const series = data.series as unknown as Record<string, number[]>;
+const t = series[sc.data.time_s];
+const v = series[sc.data.vehicle_speed_mps];
+
+const W = 1320;
+const H = 56;
+// Plot the braking manoeuvre itself: from the start to shortly after standstill, not the idle tail of the recording.
+const tMax = Math.min(t[t.length - 1], sc.truth.exact_stop.time_s * 1.1);
+const vMax = Math.max(...v);
+const px = (s: number) => (s / tMax) * W;
+const py = (m: number) => H - 6 - (m / vMax) * (H - 14);
+// Every 3rd sample is plenty at this size.
+const d = t
+  .map((s, i) => ({ s, i }))
+  .filter(({ s, i }) => s <= tMax && i % 2 === 0)
+  .map(({ s, i }, k) => `${k === 0 ? 'M' : 'L'}${px(s).toFixed(1)} ${py(v[i]).toFixed(1)}`)
+  .join('');
+const f0 = sc.truth.fault.t_start_s;
+const f1 = Math.min(sc.truth.fault.t_end_s ?? tMax, tMax);
+---
+
+<a class="trace" data-trace href="/projects/longisafe-lab/" aria-label={`Vehicle speed · scenario ${sc.id} · synthetic — LongiSafe Lab: signal trace of ${sc.title}. Open the case study.`}>
+  <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <rect class="fault" x={px(f0)} y="0" width={px(f1) - px(f0)} height={H}></rect>
+    <path class="base" d={`M0 ${H - 6}H${W}`}></path>
+    <path class="sig" pathLength="1" d={d}></path>
+  </svg>
+  <span class="cap mono">
+    <span>Vehicle speed · scenario {sc.id} · synthetic</span>
+    <span class="fz">signal frozen {f0.toFixed(0)}–{f1.toFixed(0)} s</span>
+    <span class="src">LongiSafe Lab <span aria-hidden="true">↗</span></span>
+  </span>
+</a>
+
+<style>
+  .trace {
+    display: block;
+    text-decoration: none;
+    color: var(--text-3);
+    padding-block: var(--s-4) var(--s-3);
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: 3.5rem;
+    overflow: visible;
+  }
+  .fault {
+    fill: var(--warn);
+    opacity: 0.12;
+  }
+  .base {
+    stroke: var(--border);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+  .sig {
+    fill: none;
+    stroke: var(--text-2);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    transition: stroke var(--t-component) ease;
+  }
+  .trace:hover .sig,
+  .trace:focus-visible .sig {
+    stroke: var(--text);
+  }
+  .cap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--s-1) var(--s-5);
+    margin-top: var(--s-2);
+    font-size: var(--text-2xs);
+  }
+  .fz {
+    color: var(--warn);
+  }
+  .src {
+    color: var(--text-2);
+  }
+  .trace:hover .src {
+    color: var(--text);
+  }
+  @media (max-width: 40em) {
+    .fz {
+      display: none;
+    }
+  }
+  /* Plotted once, left to right like a recorder, when the trace scrolls into view (class set by site.ts). */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(.js) .trace:not(:global(.is-in)) .sig {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+    }
+    :global(.js) .trace:not(:global(.is-in)) .fault {
+      opacity: 0;
+    }
+    :global(.js) .trace:global(.is-in) .sig {
+      stroke-dasharray: 1;
+      animation: trace-plot 1400ms var(--ease-in-out) both;
+    }
+    :global(.js) .trace:global(.is-in) .fault {
+      animation: trace-fault 400ms ease 1000ms both;
+    }
+  }
+  @keyframes trace-plot {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes trace-fault {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 0.12;
+    }
+  }
+</style>

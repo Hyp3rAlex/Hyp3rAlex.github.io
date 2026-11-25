@@ -1,0 +1,308 @@
+---
+import AYMark from '../identity/AYMark.astro';
+import { nav, person } from '../../data/profile';
+
+const path = Astro.url.pathname;
+const isCurrent = (href: string) => path === href || (href !== '/' && path.startsWith(href));
+---
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="/" aria-label={`${person.name} — home`}>
+      <AYMark size={30} />
+      <span class="brand-name">{person.name}</span>
+    </a>
+
+    <nav class="primary" aria-label="Primary">
+      <ul role="list">
+        {
+          nav.map((item) => (
+            <li>
+              <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="tools">
+      <button class="tool search" type="button" data-cmdk-open aria-haspopup="dialog" hidden>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5"></circle>
+          <path d="m10.5 10.5 3.5 3.5" stroke-linecap="square"></path>
+        </svg>
+        <span class="search-label">Search</span>
+        <kbd class="search-kbd" aria-hidden="true">Ctrl K</kbd>
+      </button>
+      <button class="tool theme" type="button" data-theme-toggle hidden>
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+          <path class="theme-half" d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"></path>
+        </svg>
+        <span class="visually-hidden" data-theme-label>Theme</span>
+      </button>
+      <a class="btn btn--sm cv" href="/resume/">CV</a>
+
+      <details class="menu">
+        <summary aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path class="m1" d="M2 6h14"></path>
+            <path class="m2" d="M2 12h14"></path>
+          </svg>
+        </summary>
+        <nav class="menu-panel" aria-label="Mobile">
+          <ul role="list">
+            <li><a href="/" aria-current={path === '/' ? 'page' : undefined}><span class="mono">00</span>Home</a></li>
+            {
+              nav.map((item, i) => (
+                <li>
+                  <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                    <span class="mono">{String(i + 1).padStart(2, '0')}</span>
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+            <li>
+              <a href="/resume/" aria-current={isCurrent('/resume/') ? 'page' : undefined}>
+                <span class="mono">05</span>CV
+              </a>
+            </li>
+          </ul>
+          <p class="menu-foot mono">
+            <a href={`mailto:${person.email}`}>Email</a>
+            <a href={person.github} rel="me noopener">GitHub</a>
+            <a href={person.linkedin} rel="me noopener">LinkedIn</a>
+          </p>
+        </nav>
+      </details>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--header-h);
+    border-bottom: 1px solid var(--border);
+  }
+  /* The blur lives on a pseudo-element: a backdrop-filter on the header itself would make it the
+     containing block for the fixed mobile menu panel and clip the panel to the header's height. */
+  .site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--header-bg);
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+  }
+  .bar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--s-5);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .brand-name {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-2);
+    display: none;
+  }
+  .primary {
+    margin-left: auto;
+    display: none;
+  }
+  .primary ul {
+    display: flex;
+    gap: var(--s-1);
+  }
+  .primary a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 var(--s-3);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--text-2);
+    text-decoration: none;
+  }
+  .primary a:hover,
+  .primary a[aria-current='page'] {
+    color: var(--text);
+  }
+  .primary a[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    left: var(--s-3);
+    right: var(--s-3);
+    bottom: calc((var(--header-h) - 2.75rem) / -2);
+    height: 1px;
+    background: var(--text);
+  }
+  .tools {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+  }
+  .tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s-2);
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0 var(--s-3);
+    border: 1px solid transparent;
+    border-radius: var(--r-2);
+    background: transparent;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    transition:
+      color var(--t-feedback) ease,
+      border-color var(--t-feedback) ease,
+      background-color var(--t-feedback) ease;
+  }
+  .tool[hidden] {
+    display: none;
+  }
+  .tool:hover {
+    color: var(--text);
+    background: var(--glow);
+  }
+  .search-label,
+  .search-kbd {
+    display: none;
+  }
+  .theme-half {
+    transform-origin: 8px 8px;
+    transition: transform var(--t-component) var(--ease-out);
+  }
+  :global([data-theme='light']) .theme-half {
+    transform: rotate(180deg);
+  }
+  :global([data-theme-pref='system']) .theme svg {
+    opacity: 0.75;
+  }
+  .cv {
+    display: none;
+  }
+
+  /* Mobile menu: <details> so it works without JavaScript */
+  .menu summary {
+    list-style: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--r-2);
+    cursor: pointer;
+    color: var(--text);
+  }
+  .menu summary::-webkit-details-marker {
+    display: none;
+  }
+  .menu summary path {
+    transform-origin: 9px 9px;
+    transition: transform var(--t-component) var(--ease-out);
+  }
+  .menu[open] .m1 {
+    transform: translateY(3px) rotate(45deg);
+  }
+  .menu[open] .m2 {
+    transform: translateY(-3px) rotate(-45deg);
+  }
+  .menu-panel {
+    position: fixed;
+    inset: var(--header-h) 0 0 0;
+    padding: var(--s-6) var(--gutter) var(--s-7);
+    background: var(--bg);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .menu-panel li {
+    border-bottom: 1px solid var(--border);
+  }
+  .menu-panel li a {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-4);
+    padding: var(--s-4) 0;
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 560;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    text-decoration: none;
+  }
+  .menu-panel li a[aria-current='page'] {
+    color: var(--text-3);
+  }
+  .menu-foot {
+    display: flex;
+    gap: var(--s-5);
+    margin-top: auto;
+    padding-top: var(--s-6);
+  }
+  .menu-foot a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--text-2);
+  }
+
+  @media (min-width: 30em) {
+    .cv {
+      display: inline-flex;
+    }
+  }
+  @media (min-width: 52em) {
+    .primary {
+      display: block;
+    }
+    .tools {
+      margin-left: 0;
+    }
+    .menu {
+      display: none;
+    }
+    .brand-name {
+      display: inline;
+    }
+  }
+  @media (min-width: 68em) {
+    .search {
+      border-color: var(--border);
+      padding: 0 var(--s-2) 0 var(--s-3);
+      height: 2.25rem;
+    }
+    .search-label {
+      display: inline;
+      color: var(--text-3);
+      font-size: var(--text-xs);
+      margin-right: var(--s-4);
+    }
+    .search-kbd {
+      display: inline-block;
+    }
+  }
+</style>

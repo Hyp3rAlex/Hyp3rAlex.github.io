@@ -1,0 +1,322 @@
+---
+import Base from '../layouts/Base.astro';
+import AYMark from '../components/identity/AYMark.astro';
+import { person } from '../data/profile';
+
+const interests = [
+  'Working-student positions',
+  'Internships',
+  'Engineering and software projects',
+  'Technical collaborations',
+  'Hackathons',
+  'Professional networking',
+];
+---
+
+<Base
+  title="Contact"
+  description="Contact Alexander Yordanov — working-student positions, internships, engineering projects and hackathons. Email, LinkedIn and GitHub. Based in Munich."
+>
+  <section class="wrap contact">
+    <div class="lead">
+      <p class="label">Contact</p>
+      <h1>Let's build something that matters.</h1>
+      <p class="lede">
+        I'm looking for a team where software meets real systems — and I'm happy to talk about a role, a project or a
+        hackathon idea.
+      </p>
+      <div class="mark" aria-hidden="true">
+        <AYMark size={520} />
+      </div>
+    </div>
+
+    <div class="open-to">
+      <p class="k">Open to</p>
+      <ul class="interests">
+        {interests.map((i) => <li>{i}</li>)}
+      </ul>
+    </div>
+
+    <div class="panel corner-marks" aria-label="Contact options">
+      <p class="panel-head mono"><span>Direct line</span><span class="live"><i></i> Replies by email</span></p>
+
+      <div class="email" data-copy-scope>
+        <p class="k">Email</p>
+        <a class="addr" href={`mailto:${person.email}`}>{person.email}</a>
+        <div class="email-actions">
+          <a class="btn btn--primary" href={`mailto:${person.email}`}>Write an email</a>
+          <button class="btn" type="button" data-copy={person.email} hidden>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+              <rect class="c1" x="4.5" y="4.5" width="8" height="8" rx="1"></rect>
+              <path class="c2" d="M9.5 2.5v-1h-8v8h1"></path>
+              <path class="ok" d="m3 7.5 2.8 2.8L11 4.5"></path>
+            </svg>
+            <span data-copy-label>Copy address</span>
+          </button>
+        </div>
+        <p class="status" role="status" aria-live="polite" data-copy-status></p>
+      </div>
+
+      <ul class="rows" role="list">
+        <li>
+          <a href={person.linkedin} rel="me noopener">
+            <span class="k">LinkedIn</span>
+            <span class="v">Alexander Yordanov</span>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>
+        <li>
+          <a href={person.github} rel="me noopener">
+            <span class="k">GitHub</span>
+            <span class="v">{person.githubHandle}</span>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>
+        <li>
+          <a href="/resume/">
+            <span class="k">CV</span>
+            <span class="v">Download CV · EN / DE</span>
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li>
+          <a href="/recruiter/">
+            <span class="k">Hiring</span>
+            <span class="v">Recruiter brief</span>
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li class="static">
+          <span class="k">Based in</span>
+          <span class="v">Munich / Garching, Germany</span>
+          <span class="coord mono" aria-hidden="true">{person.coordinates}</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .contact {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-7);
+    padding-block: clamp(2.5rem, 1.5rem + 5vw, 6rem) clamp(3rem, 2rem + 5vw, 6rem);
+  }
+  .lead {
+    position: relative;
+    isolation: isolate;
+  }
+  h1 {
+    margin: var(--s-4) 0 var(--s-5);
+    max-width: 11ch;
+    font-size: clamp(2.75rem, 0.9rem + 8.2vw, 6.75rem);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 0.9;
+  }
+  .lede {
+    max-width: 40ch;
+  }
+  .open-to {
+    order: 3;
+  }
+  .interests {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin: var(--s-2) 0 0;
+    padding: 0;
+    list-style: none;
+    max-width: 34rem;
+  }
+  .interests li {
+    padding: 0.3em 0.7em;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-1);
+    font-size: var(--text-sm);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  /* Oversized outline of the monogram, cropped by the column: identity without another headline. */
+  .mark {
+    position: absolute;
+    z-index: -1;
+    right: -6%;
+    bottom: -18%;
+    color: var(--border);
+    opacity: 0.55;
+    pointer-events: none;
+    display: none;
+  }
+  .mark :global(svg) {
+    stroke-width: 0.5;
+  }
+
+  .panel {
+    align-self: start;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+    padding: var(--s-3) var(--s-5);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-2xs);
+  }
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    color: var(--text-2);
+  }
+  .live i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ok);
+  }
+  .k {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .email {
+    padding: var(--s-5);
+    border-bottom: 1px solid var(--border);
+  }
+  .addr {
+    display: block;
+    margin: var(--s-2) 0 var(--s-4);
+    font-family: var(--font-display);
+    font-size: clamp(1.0625rem, 0.6rem + 1.9vw, 1.5rem);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    text-decoration-color: var(--border-strong);
+    user-select: all;
+  }
+  .email-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+  }
+  .email-actions [hidden] {
+    display: none;
+  }
+  .email-actions .btn {
+    flex: 1 1 auto;
+  }
+  [data-copy] .ok {
+    opacity: 0;
+    stroke-dasharray: 14;
+    stroke-dashoffset: 14;
+  }
+  [data-copy] .c1,
+  [data-copy] .c2,
+  [data-copy] .ok {
+    transition:
+      opacity var(--t-feedback) ease,
+      stroke-dashoffset var(--t-component) var(--ease-out);
+  }
+  [data-copy][data-state='ok'] {
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+  [data-copy][data-state='ok'] .c1,
+  [data-copy][data-state='ok'] .c2 {
+    opacity: 0;
+  }
+  [data-copy][data-state='ok'] .ok {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+  [data-copy][data-state='fail'] {
+    border-color: var(--fail);
+    color: var(--fail);
+  }
+  .status {
+    min-height: 1.4em;
+    margin-top: var(--s-2);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  .rows li + li {
+    border-top: 1px solid var(--border);
+  }
+  .rows a,
+  .rows .static {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: var(--s-3);
+    padding: var(--s-4) var(--s-5);
+    min-height: 3.25rem;
+    text-decoration: none;
+    transition: background-color var(--t-feedback) ease;
+  }
+  .rows a:hover {
+    background: var(--raised);
+  }
+  .rows .v {
+    font-size: var(--text-base);
+    overflow-wrap: anywhere;
+  }
+  .rows .arrow {
+    color: var(--text-3);
+    transition:
+      transform var(--t-component) var(--ease-out),
+      color var(--t-feedback) ease;
+  }
+  .rows a:hover .arrow {
+    transform: translate(2px, -2px);
+    color: var(--text);
+  }
+  .coord {
+    font-size: var(--text-2xs);
+  }
+  @media (max-width: 26em) {
+    .coord {
+      display: none;
+    }
+    .rows a,
+    .rows .static {
+      grid-template-columns: 4.75rem minmax(0, 1fr) auto;
+      padding-inline: var(--s-4);
+    }
+    .email {
+      padding-inline: var(--s-4);
+    }
+  }
+  @media (min-width: 62em) {
+    .contact {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+      grid-template-rows: auto auto;
+      column-gap: var(--s-8);
+      row-gap: var(--s-6);
+      align-items: start;
+    }
+    .lead {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .open-to {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .panel {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      align-self: center;
+    }
+    .mark {
+      display: block;
+    }
+  }
+</style>

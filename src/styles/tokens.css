@@ -1,0 +1,107 @@
+/* Design tokens — AY / Stealth Engineering × Cyber OS. See DESIGN.md. */
+
+:root {
+  /* Type */
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-body: 'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --text-2xs: 0.6875rem; /* 11 — mono labels only */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+  --text-xl: clamp(1.5rem, 1.2rem + 1.3vw, 2.125rem);
+  --text-2xl: clamp(2rem, 1.4rem + 2.6vw, 3.5rem);
+  --text-3xl: clamp(2.5rem, 1.4rem + 4.6vw, 5rem);
+  --text-hero: clamp(3.1rem, 0.6rem + 12.4vw, 10.5rem);
+
+  /* Space — 4/8 based */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4rem;
+  --s-9: 6rem;
+  --s-10: 8rem;
+  --gutter: clamp(1.25rem, 0.6rem + 3vw, 3.5rem);
+  --section: clamp(4rem, 2.5rem + 5vw, 7rem);
+  --max: 82.5rem; /* 1320 */
+  --measure: 68ch;
+
+  /* Shape */
+  --r-1: 2px;
+  --r-2: 4px;
+  --r-3: 8px;
+  --hairline: 1px;
+
+  /* Motion */
+  --t-feedback: 140ms;
+  --t-component: 280ms;
+  --t-reveal: 560ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --stagger: 60ms;
+
+  --header-h: 3.75rem;
+
+  /* Dark (brand default) */
+  color-scheme: dark;
+  --bg: #08090b;
+  --surface: #111216;
+  --raised: #181a1f;
+  --border: #2a2c31;
+  --border-strong: #43464d;
+  --control: #73777f; /* borders of inputs and selected states: >= 3:1 on --bg and --surface */
+  --text: #f4f4f5;
+  --text-2: #b5b8be;
+  --text-3: #93979f;
+  --accent: #e6e7ea;
+  --accent-ink: #08090b;
+  --grid-line: rgb(255 255 255 / 0.045);
+  --glow: rgb(255 255 255 / 0.07);
+  --ok: #6fcf97;
+  --warn: #e2b33c;
+  --fail: #f2777a;
+  --info: #7cb7ff;
+  --focus: #9cc7ff;
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 24px 48px -24px rgb(0 0 0 / 0.7);
+  --header-bg: rgb(8 9 11 / 0.82);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f1ec;
+  --surface: #faf9f5;
+  --raised: #ffffff;
+  --border: #d6d3cb;
+  --border-strong: #a9a59b;
+  --control: #777165;
+  --text: #121316;
+  --text-2: #3f4248;
+  --text-3: #5d6068;
+  --accent: #121316;
+  --accent-ink: #f7f6f2;
+  --grid-line: rgb(18 19 22 / 0.06);
+  --glow: rgb(18 19 22 / 0.05);
+  --ok: #1c7443;
+  --warn: #835b00;
+  --fail: #b3232b;
+  --info: #1b5bb8;
+  --focus: #1b5bb8;
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 20px 40px -28px rgb(40 36 24 / 0.35);
+  --header-bg: rgb(243 241 236 / 0.86);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-feedback: 0ms;
+    --t-component: 0ms;
+    --t-reveal: 0ms;
+    --stagger: 0ms;
+  }
+}

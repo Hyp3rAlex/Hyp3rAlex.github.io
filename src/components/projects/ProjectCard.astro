@@ -1,0 +1,225 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { CATEGORIES, KINDS } from '../../content.config';
+import ProjectVisual from './ProjectVisual.astro';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+  index?: number;
+  layout?: 'feature' | 'standard' | 'row';
+  heading?: 'h2' | 'h3';
+}
+const { project, index, layout = 'standard', heading: H = 'h3' } = Astro.props;
+const d = project.data;
+const href = `/projects/${project.id}/`;
+// The role is shown next to it, so pick the first fact that is not the role itself.
+const fact = d.facts.find((f) => !/team lead|sole author/i.test(f.value)) ?? d.facts[0];
+---
+
+<article class:list={['card', `card--${layout}`]} data-category={[d.category, ...d.alsoIn].join(' ')} data-kind={d.kind}>
+  <div class="visual">
+    <ProjectVisual visual={d.visual} />
+  </div>
+  <div class="body">
+    <p class="meta mono">
+      {index !== undefined && <span class="idx">{String(index + 1).padStart(2, '0')}</span>}
+      <span>{CATEGORIES[d.category]}</span>
+      <span class="sep" aria-hidden="true">/</span>
+      <span>{KINDS[d.kind]}</span>
+    </p>
+    <H class="title">
+      <a href={href}>{d.title}</a>
+    </H>
+    <p class="summary">{d.summary}</p>
+    <dl class="proof">
+      <div>
+        <dt>My role</dt>
+        <dd class="role">{d.role}</dd>
+      </div>
+      <div>
+        <dt>{fact.label}</dt>
+        <dd>{fact.value}</dd>
+      </div>
+    </dl>
+    <p class="foot">
+      <span class="techline mono">{d.stack.slice(0, layout === 'feature' ? 5 : 3).join(' · ')}</span>
+      <span class="go" aria-hidden="true">Case study <span class="arrow">→</span></span>
+    </p>
+  </div>
+</article>
+
+<style>
+  .card {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--r-3);
+    background: var(--surface);
+    overflow: hidden;
+    transition:
+      border-color var(--t-component) ease,
+      transform var(--t-component) var(--ease-out);
+  }
+  .card:hover,
+  .card:focus-within {
+    border-color: var(--border-strong);
+  }
+  .visual {
+    border-bottom: 1px solid var(--border);
+    aspect-ratio: 4 / 3;
+    min-height: 0;
+  }
+  @media (min-width: 30em) {
+    .visual {
+      aspect-ratio: 16 / 9;
+    }
+  }
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    padding: var(--s-5);
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-2);
+  }
+  .idx {
+    color: var(--text);
+    margin-right: var(--s-2);
+  }
+  .sep {
+    color: var(--border-strong);
+  }
+  .title {
+    font-size: var(--text-xl);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .card--feature .title {
+    font-size: clamp(1.75rem, 1.2rem + 1.8vw, 2.75rem);
+  }
+  .title a {
+    text-decoration: none;
+  }
+  /* Whole card is the click target; the heading link stays the accessible name. */
+  .title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+  .title a:focus-visible {
+    outline: none;
+  }
+  .card:has(.title a:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+  .summary {
+    color: var(--text-2);
+    max-width: 58ch;
+  }
+  .proof {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s-4);
+    margin: 0;
+    padding-top: var(--s-4);
+    border-top: 1px solid var(--border);
+  }
+  .proof dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 2px;
+  }
+  .proof dd {
+    margin: 0;
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+  .proof .role {
+    font-weight: 550;
+  }
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-2) var(--s-4);
+    margin-top: auto;
+    padding-top: var(--s-2);
+  }
+  .techline {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: var(--text-2xs);
+  }
+  .go {
+    font-size: var(--text-sm);
+    font-weight: 550;
+    display: inline-flex;
+    gap: var(--s-2);
+    white-space: nowrap;
+  }
+  /* Pointer spotlight: a soft highlight on the border that follows the cursor (set by site.ts). */
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(14rem circle at var(--mx, 50%) var(--my, 0%), var(--text-2), transparent 70%);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    opacity: 0;
+    transition: opacity var(--t-component) ease;
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .card:hover::after {
+      opacity: 1;
+    }
+  }
+  .go .arrow {
+    transition: transform var(--t-component) var(--ease-out);
+  }
+  .card:hover .go .arrow {
+    transform: translateX(4px);
+  }
+
+  @media (min-width: 62em) {
+    .card--feature {
+      grid-template-rows: none;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    }
+    .card--feature .visual {
+      aspect-ratio: auto;
+      border-bottom: 0;
+      border-right: 1px solid var(--border);
+      min-height: 24rem;
+    }
+    .card--feature .body {
+      padding: var(--s-7) var(--s-6);
+      justify-content: center;
+    }
+    .card--row {
+      grid-template-rows: none;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    }
+    .card--row .visual {
+      aspect-ratio: auto;
+      border-bottom: 0;
+      border-right: 1px solid var(--border);
+    }
+  }
+</style>

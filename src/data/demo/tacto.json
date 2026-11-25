@@ -1,0 +1,1575 @@
+{
+ "schema": "tacto-demo/1",
+ "provenance": {
+  "replay": {
+   "kind": "simulator re-run",
+   "statement": "Offline, deterministic re-run of the repository's `final` agent chain against the starter kit's own local simulator (fixed scripted supplier) on the kit's sample case S01. Not a recording of the hosted Tacto arena and not the Live Final. No LLM, no API key, no data package. Simulator scores are not performance claims.",
+   "sourceRepo": "team hackathon repository (teammate-owned; not linked)",
+   "sourceCommit": "700cf95",
+   "generatedOn": "2026-11-25",
+   "case": "S01 is the sample case shipped with the starter kit (agent/arena_kit/sim_cases/S01.json; the kit is stated to be MIT-licensed). Case title, briefing and data references are not included.",
+   "method": "A recorder wrapped agent.decide() and the message transport and only observed; costs, checks and scores were computed with the repository's own functions (total_cost, must_haves_ok, score).",
+   "omitted": "Other audit re-runs (built on hosted practice-case parameters) are deliberately not shipped. The agent log line of step 2 (no data package found) is omitted because it contained a local file path.",
+   "tags": "Rationale tags with source \"annotation\" were derived after the fact from message shape and thread state; tags with source \"guard_log\" map one-to-one to log lines emitted by guard.py. This run contains no guard log line: the guard passed every decision through unchanged."
+  },
+  "guardCase": {
+   "kind": "synthetic",
+   "statement": "Hand-authored synthetic case for the guard sandbox. Product, prices, options and must-haves are invented for this page and correspond to no hackathon case. The cost model is a two-term simplification (price x volume plus payment-term interest), not the kit's cost function.",
+   "authoredOn": "2026-11-25"
+  },
+  "guardFixtures": {
+   "kind": "original outputs on synthetic inputs",
+   "statement": "Outputs produced by the repository's guard.py at 700cf95 on synthetic inputs. GuardedAgent.decide, satisfy_must_haves and fix_sheets were run unmodified in an isolated copy (git archive of 700cf95, Python 3.12, no network, no credentials) with a stub delegate and the synthetic case SYN-G1 expressed as a starter-kit case; guard log lines were captured from the 'arena' logger. Costs inside those runs come from the kit's own total_cost, not from the simplified model of the browser port.",
+   "generatedOn": "2026-11-25",
+   "sourceCommit": "700cf95"
+  }
+ },
+ "run": {
+  "id": "final-S01-script",
+  "agent": "final",
+  "agentChain": "EvidenceAgent(GuardedAgent(FinalAgent()))",
+  "caseId": "S01",
+  "caseType": "price_increase",
+  "opponent": "arena_kit.sim.Sim (fixed scripted supplier)",
+  "roundLimit": 10,
+  "negotiable": [
+   "unit_price",
+   "payment_days"
+  ],
+  "termOptions": {
+   "payment_days": [
+    14,
+    30,
+    45,
+    60,
+    90
+   ]
+  },
+  "fixedTerms": {
+   "lead_time_days": 42,
+   "volume_per_year": 6650,
+   "contract_months": 12,
+   "index_clause": null,
+   "incoterm": "FCA",
+   "tooling_eur": 0
+  },
+  "mustHaves": [],
+  "buyer": {
+   "need_per_year": 6650,
+   "horizon_years": 1,
+   "current_unit_price": 15.88,
+   "fallback_unit_price": 18.26,
+   "interest_rate": 0.08,
+   "reference_payment_days": 60,
+   "need_lead_time_days": 42
+  },
+  "standardTerms": {
+   "payment_days": 14
+  },
+  "result": {
+   "deal": true,
+   "offer_id": "offer:70270-5",
+   "c_open": 119491.07,
+   "c_deal": 107734.61,
+   "c_best": 105969.08,
+   "must_haves_ok": true,
+   "score": 0.8694,
+   "terms": {
+    "unit_price": 15.72,
+    "payment_days": 14
+   }
+  },
+  "events": [
+   {
+    "step": 1,
+    "round": 0,
+    "actor": "supplier",
+    "status": "open",
+    "text": "Simulated supplier. Our quote is attached.",
+    "termSheets": [
+     {
+      "termSheetId": "offer:70270-0",
+      "terms": {
+       "unit_price": 17.47
+      },
+      "costEur": 119491.07,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 119491.07,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.0
+     }
+    ]
+   },
+   {
+    "step": 2,
+    "round": 1,
+    "actor": "buyer",
+    "decision": "counter",
+    "acceptedTermSheetId": null,
+    "movesLeftBefore": 10,
+    "rationale": [
+     {
+      "tag": "first_offer",
+      "source": "annotation"
+     },
+     {
+      "tag": "multi_sheet_package",
+      "source": "annotation"
+     }
+    ],
+    "guardLog": [],
+    "text": "Thank you for your offer. We have moved on our side; please see our updated terms.",
+    "termSheets": [
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 13.98,
+       "payment_days": 90
+      },
+      "costEur": 94475.22,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 94475.22,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     },
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 13.98,
+       "payment_days": 14
+      },
+      "costEur": 96045.33,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 96045.33,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     }
+    ]
+   },
+   {
+    "step": 3,
+    "round": 1,
+    "actor": "supplier",
+    "status": "open",
+    "text": "Simulated supplier. Our counter-offer.",
+    "termSheets": [
+     {
+      "termSheetId": "offer:70270-1",
+      "terms": {
+       "unit_price": 17.12
+      },
+      "costEur": 117139.78,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 117139.78,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.1739
+     }
+    ]
+   },
+   {
+    "step": 4,
+    "round": 2,
+    "actor": "buyer",
+    "decision": "counter",
+    "acceptedTermSheetId": null,
+    "movesLeftBefore": 9,
+    "rationale": [
+     {
+      "tag": "counter_offer",
+      "source": "annotation"
+     },
+     {
+      "tag": "multi_sheet_package",
+      "source": "annotation"
+     }
+    ],
+    "guardLog": [],
+    "text": "Thank you for your offer. We have moved on our side; please see our updated terms.",
+    "termSheets": [
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 14.92,
+       "payment_days": 90
+      },
+      "costEur": 100684.55,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 100684.55,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     },
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 14.92,
+       "payment_days": 14
+      },
+      "costEur": 102360.23,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 102360.23,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     }
+    ]
+   },
+   {
+    "step": 5,
+    "round": 2,
+    "actor": "supplier",
+    "status": "open",
+    "text": "Simulated supplier. Our counter-offer.",
+    "termSheets": [
+     {
+      "termSheetId": "offer:70270-2",
+      "terms": {
+       "unit_price": 16.77
+      },
+      "costEur": 114788.49,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 114788.49,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.3478
+     }
+    ]
+   },
+   {
+    "step": 6,
+    "round": 3,
+    "actor": "buyer",
+    "decision": "counter",
+    "acceptedTermSheetId": null,
+    "movesLeftBefore": 8,
+    "rationale": [
+     {
+      "tag": "counter_offer",
+      "source": "annotation"
+     },
+     {
+      "tag": "multi_sheet_package",
+      "source": "annotation"
+     }
+    ],
+    "guardLog": [],
+    "text": "Thank you for your offer. We have moved on our side; please see our updated terms.",
+    "termSheets": [
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 15.57,
+       "payment_days": 90
+      },
+      "costEur": 104978.23,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 104978.23,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     },
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 15.57,
+       "payment_days": 14
+      },
+      "costEur": 106726.91,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 106726.91,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.944
+     }
+    ]
+   },
+   {
+    "step": 7,
+    "round": 3,
+    "actor": "supplier",
+    "status": "open",
+    "text": "Simulated supplier. Our counter-offer.",
+    "termSheets": [
+     {
+      "termSheetId": "offer:70270-3",
+      "terms": {
+       "unit_price": 16.42
+      },
+      "costEur": 112437.2,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 112437.2,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.5217
+     }
+    ]
+   },
+   {
+    "step": 8,
+    "round": 4,
+    "actor": "buyer",
+    "decision": "counter",
+    "acceptedTermSheetId": null,
+    "movesLeftBefore": 7,
+    "rationale": [
+     {
+      "tag": "counter_offer",
+      "source": "annotation"
+     },
+     {
+      "tag": "multi_sheet_package",
+      "source": "annotation"
+     }
+    ],
+    "guardLog": [],
+    "text": "Thank you for your offer. We have moved on our side; please see our updated terms.",
+    "termSheets": [
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 15.6,
+       "payment_days": 90
+      },
+      "costEur": 105176.4,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 105176.4,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     },
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 15.6,
+       "payment_days": 14
+      },
+      "costEur": 106928.45,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 106928.45,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.9291
+     }
+    ]
+   },
+   {
+    "step": 9,
+    "round": 4,
+    "actor": "supplier",
+    "status": "open",
+    "text": "Simulated supplier. Our counter-offer.",
+    "termSheets": [
+     {
+      "termSheetId": "offer:70270-4",
+      "terms": {
+       "unit_price": 16.07
+      },
+      "costEur": 110085.9,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 110085.9,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.6955
+     }
+    ]
+   },
+   {
+    "step": 10,
+    "round": 5,
+    "actor": "buyer",
+    "decision": "counter",
+    "acceptedTermSheetId": null,
+    "movesLeftBefore": 6,
+    "rationale": [
+     {
+      "tag": "counter_offer",
+      "source": "annotation"
+     },
+     {
+      "tag": "multi_sheet_package",
+      "source": "annotation"
+     }
+    ],
+    "guardLog": [],
+    "text": "Thank you for your offer. We have moved on our side; please see our updated terms.",
+    "termSheets": [
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 15.62,
+       "payment_days": 90
+      },
+      "costEur": 105308.51,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 105308.51,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 1.0
+     },
+     {
+      "termSheetId": null,
+      "terms": {
+       "unit_price": 15.62,
+       "payment_days": 14
+      },
+      "costEur": 107062.81,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 107062.81,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.9191
+     }
+    ]
+   },
+   {
+    "step": 11,
+    "round": 5,
+    "actor": "supplier",
+    "status": "final_offer",
+    "text": "Simulated supplier. Final offer.",
+    "termSheets": [
+     {
+      "termSheetId": "offer:70270-5",
+      "terms": {
+       "unit_price": 15.72
+      },
+      "costEur": 107734.61,
+      "mustHavesOk": true,
+      "checks": [
+       {
+        "check": "priced",
+        "ok": true
+       },
+       {
+        "check": "not_worse_than_opening",
+        "value": 107734.61,
+        "bound": 119491.07,
+        "ok": true
+       }
+      ],
+      "scoreIfAccepted": 0.8694
+     }
+    ]
+   },
+   {
+    "step": 12,
+    "round": 5,
+    "actor": "buyer",
+    "decision": "accept",
+    "acceptedTermSheetId": "offer:70270-5",
+    "movesLeftBefore": 5,
+    "rationale": [
+     {
+      "tag": "accept_standing_sheet",
+      "source": "annotation"
+     },
+     {
+      "tag": "supplier_status_final_offer",
+      "source": "annotation"
+     }
+    ],
+    "guardLog": [],
+    "text": "",
+    "termSheets": []
+   }
+  ],
+  "sourceRunSha256": "b1593888ffe746821ef6387357fd0ade6a26dca5d6937e665f3d41d77780581b"
+ },
+ "guardCase": {
+  "caseId": "SYN-G1",
+  "title": "Synthetic case: machined bracket, one supplier",
+  "synthetic": true,
+  "negotiable": [
+   "unit_price",
+   "lead_time_days",
+   "payment_days",
+   "defect_ppm"
+  ],
+  "termOptions": {
+   "lead_time_days": [
+    21,
+    28,
+    35,
+    49
+   ],
+   "payment_days": [
+    14,
+    30,
+    45,
+    60
+   ],
+   "defect_ppm": [
+    250,
+    500,
+    1000,
+    2000
+   ]
+  },
+  "mustHaves": [
+   {
+    "field": "lead_time_days",
+    "op": "<=",
+    "value": 35
+   },
+   {
+    "field": "payment_days",
+    "op": ">=",
+    "value": 45
+   },
+   {
+    "field": "defect_ppm",
+    "op": "<=",
+    "value": 1000
+   }
+  ],
+  "plan": {
+   "lead_time_days": 35,
+   "payment_days": 45,
+   "defect_ppm": 1000
+  },
+  "roundLimit": 10,
+  "cost": {
+   "volumePerYear": 4000,
+   "interestRate": 0.08,
+   "referencePaymentDays": 45
+  },
+  "alternative": {
+   "unit_price": 27.5
+  },
+  "supplierId": "sup:SYN",
+  "supplierSheets": {
+   "breaks": {
+    "label": "Breaks all three must-haves, price moved",
+    "opening": {
+     "unit_price": 26.0,
+     "lead_time_days": 49,
+     "payment_days": 30,
+     "defect_ppm": 2000
+    },
+    "standing": {
+     "unit_price": 24.8,
+     "lead_time_days": 49,
+     "payment_days": 30,
+     "defect_ppm": 2000
+    }
+   },
+   "complies": {
+    "label": "Meets the must-haves, price moved",
+    "opening": {
+     "unit_price": 26.0,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    },
+    "standing": {
+     "unit_price": 24.8,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    }
+   },
+   "unmoved": {
+    "label": "Meets the must-haves, still at its opening price",
+    "opening": {
+     "unit_price": 26.0,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    },
+    "standing": {
+     "unit_price": 26.0,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    }
+   }
+  },
+  "defaults": {
+   "delegate": "counter",
+   "draft": {
+    "unit_price": 22.5,
+    "lead_time_days": 46,
+    "payment_days": 30,
+    "defect_ppm": 2000
+   },
+   "supplierSheet": "breaks",
+   "status": "open",
+   "movesLeft": 6,
+   "guardCountersUsed": 0
+  }
+ },
+ "guardFixtures": {
+  "guardDecide": [
+   {
+    "name": "pass: compliant counter is sent unchanged",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 28,
+       "payment_days": 60,
+       "defect_ppm": 500
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 22.5,
+        "lead_time_days": 28,
+        "payment_days": 60,
+        "defect_ppm": 500
+       }
+      ],
+      "log": []
+     }
+    ]
+   },
+   {
+    "name": "fix: counter breaking all three must-haves",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 49,
+       "payment_days": 30,
+       "defect_ppm": 2000
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 22.5,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: fixed sheet (must-have): lead_time_days 49 -> 35, payment_days 30 -> 45, defect_ppm 2000 -> 1000"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "fix: off-grid lead time snaps onto a breaking option (sandbox default)",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 46,
+       "payment_days": 30,
+       "defect_ppm": 2000
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 22.5,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: fixed sheet (must-have): lead_time_days 46 -> 35, payment_days 30 -> 45, defect_ppm 2000 -> 1000"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "fix: one must-have broken, two sheets, one duplicate after fixing",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 28,
+       "payment_days": 60,
+       "defect_ppm": 2000
+      },
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 28,
+       "payment_days": 60,
+       "defect_ppm": 1000
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 22.5,
+        "lead_time_days": 28,
+        "payment_days": 60,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: fixed sheet (must-have): defect_ppm 2000 -> 1000"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "walk-away becomes a counter twice, then the closing move walks",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "walk_away"
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 24.8,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: counter at their price on sup:SYN (delegate wanted to walk)"
+      ]
+     },
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 24.8,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: counter at their price on sup:SYN (delegate wanted to walk)"
+      ]
+     },
+     {
+      "action": "walk_away",
+      "sheets": [],
+      "log": [
+       "guard: closing move, no thread left to continue (delegate wanted to walk)"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "crash becomes a counter at their price",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "crash"
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 24.8,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: delegate crashed",
+       "guard: counter at their price on sup:SYN (delegate crashed)"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "walk-away with a safe, moved standing sheet becomes an accept",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "walk_away"
+    },
+    "expected": [
+     {
+      "action": "accept",
+      "sheets": [],
+      "log": [
+       "guard: accept a safe standing sheet (delegate wanted to walk)"
+      ],
+      "termSheetId": "o4"
+     }
+    ]
+   },
+   {
+    "name": "walk-away with a safe but unmoved sheet becomes a counter",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "walk_away"
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 26.0,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: counter at their price on sup:SYN (delegate wanted to walk)"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "accept of an unmoved opening quote before we wrote is deferred",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o0",
+     "status": "open",
+     "buyerMessagesSent": 0,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "accept",
+     "termSheetId": "o0"
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 26.0,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: deferred round-1 accept on sup:SYN (unmoved opening offer)"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "accept of a safe, moved standing sheet passes",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "accept",
+     "termSheetId": "o4"
+    },
+    "expected": [
+     {
+      "action": "accept",
+      "sheets": [],
+      "log": [],
+      "termSheetId": "o4"
+     }
+    ]
+   },
+   {
+    "name": "accept with a stale sheet id is not safe",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "accept",
+     "termSheetId": "o0"
+    },
+    "expected": [
+     {
+      "action": "accept",
+      "sheets": [],
+      "log": [
+       "guard: accept a safe standing sheet (delegate accept is not safe)"
+      ],
+      "termSheetId": "o4"
+     }
+    ]
+   },
+   {
+    "name": "accept of a sheet that breaks must-haves is not safe",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "accept",
+     "termSheetId": "o4"
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 24.8,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: counter at their price on sup:SYN (delegate accept is not safe)"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "last message: price push replaced by a must-have counter at their price",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o9",
+     "status": "open",
+     "buyerMessagesSent": 9,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 28,
+       "payment_days": 60,
+       "defect_ppm": 500
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 24.8,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: must-have counter at their price on last move"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "last message: price push replaced by accepting the safe sheet",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o9",
+     "status": "open",
+     "buyerMessagesSent": 9,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 28,
+       "payment_days": 60,
+       "defect_ppm": 500
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "accept",
+      "sheets": [],
+      "log": [
+       "guard: accept on last move (a lower counter would be refused)"
+      ],
+      "termSheetId": "o9"
+     }
+    ]
+   },
+   {
+    "name": "no messages left: closing move",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 35,
+      "payment_days": 45,
+      "defect_ppm": 1000
+     },
+     "standingId": "o10",
+     "status": "open",
+     "buyerMessagesSent": 10,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "counter",
+     "sheets": [
+      {
+       "unit_price": 22.5,
+       "lead_time_days": 28,
+       "payment_days": 60,
+       "defect_ppm": 500
+      }
+     ]
+    },
+    "expected": [
+     {
+      "action": "accept",
+      "sheets": [],
+      "log": [
+       "guard: closing move (no messages left on sup:SYN)"
+      ],
+      "termSheetId": "o10"
+     }
+    ]
+   },
+   {
+    "name": "final offer: one guard counter, then the closing move",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "final_offer",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "walk_away"
+    },
+    "expected": [
+     {
+      "action": "counter",
+      "sheets": [
+       {
+        "unit_price": 24.8,
+        "lead_time_days": 35,
+        "payment_days": 45,
+        "defect_ppm": 1000
+       }
+      ],
+      "log": [
+       "guard: counter at their price on sup:SYN (delegate wanted to walk)"
+      ]
+     },
+     {
+      "action": "walk_away",
+      "sheets": [],
+      "log": [
+       "guard: closing move, no thread left to continue (delegate wanted to walk)"
+      ]
+     }
+    ]
+   },
+   {
+    "name": "text-only message passes",
+    "thread": {
+     "supplierId": "sup:SYN",
+     "opening": {
+      "unit_price": 26.0,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standing": {
+      "unit_price": 24.8,
+      "lead_time_days": 49,
+      "payment_days": 30,
+      "defect_ppm": 2000
+     },
+     "standingId": "o4",
+     "status": "open",
+     "buyerMessagesSent": 4,
+     "guardCountersUsed": 0
+    },
+    "delegate": {
+     "type": "text"
+    },
+    "expected": [
+     {
+      "action": "text",
+      "sheets": [],
+      "log": []
+     }
+    ]
+   }
+  ],
+  "satisfyMustHaves": [
+   {
+    "terms": {
+     "unit_price": 22.5,
+     "lead_time_days": 49,
+     "payment_days": 30,
+     "defect_ppm": 2000
+    },
+    "satisfied": {
+     "unit_price": 22.5,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    },
+    "changes": [
+     "lead_time_days 49 -> 35, payment_days 30 -> 45, defect_ppm 2000 -> 1000"
+    ]
+   },
+   {
+    "terms": {
+     "unit_price": 22.5,
+     "lead_time_days": 46,
+     "payment_days": 30,
+     "defect_ppm": 2000
+    },
+    "satisfied": {
+     "unit_price": 22.5,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    },
+    "changes": [
+     "lead_time_days 46 -> 35, payment_days 30 -> 45, defect_ppm 2000 -> 1000"
+    ]
+   },
+   {
+    "terms": {
+     "unit_price": 22.5
+    },
+    "satisfied": {
+     "unit_price": 22.5,
+     "lead_time_days": 35,
+     "payment_days": 45,
+     "defect_ppm": 1000
+    },
+    "changes": [
+     "lead_time_days None -> 35, payment_days None -> 45, defect_ppm None -> 1000"
+    ]
+   },
+   {
+    "terms": {
+     "unit_price": 22.5,
+     "lead_time_days": 31.4,
+     "payment_days": 60,
+     "defect_ppm": 500
+    },
+    "satisfied": {
+     "unit_price": 22.5,
+     "lead_time_days": 28,
+     "payment_days": 60,
+     "defect_ppm": 500
+    },
+    "changes": [
+     "lead_time_days 31.4 -> 28"
+    ]
+   },
+   {
+    "terms": {
+     "unit_price": 22.5,
+     "lead_time_days": 28,
+     "payment_days": 60,
+     "defect_ppm": 500
+    },
+    "satisfied": {
+     "unit_price": 22.5,
+     "lead_time_days": 28,
+     "payment_days": 60,
+     "defect_ppm": 500
+    },
+    "changes": []
+   }
+  ]
+ }
+}

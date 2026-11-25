@@ -1,0 +1,270 @@
+---
+title: Tacto Negotiation Arena
+tagline: Team Lead of a three-person hackathon team that built a rule-based agent negotiating procurement deals with supplier bots under hard constraints.
+summary: As Team Lead I led a three-person hackathon team that built a rule-based buyer agent for Tacto's negotiation challenge, and contributed to the development of the constraint-validation and enforcement logic that guards every offer the submitted agent sends.
+category: software
+alsoIn: [data]
+kind: hackathon
+team: true
+role: Team Lead · negotiation constraint validation and enforcement
+collaborators:
+  - name: Niko
+  - name: Petra
+context: Tacto Negotiation Arena challenge at the “MUC Hackathon” (as the repository names it), Munich
+period: 10–11 October 2026
+status: Completed and submitted
+stack: [Python 3.12, Rule-based agents, pytest, uv, httpx]
+facts:
+  - value: Team Lead
+    label: Led the three-person hackathon team
+    note: Constraint validation and enforcement
+  - value: '10 / 10'
+    label: Team result · agreements in the practice cases
+    note: Mean score ≈ 0.72, self-logged practice evaluation
+  - value: '75'
+    label: Tests in my five test files, passing
+    note: Re-run 25 Nov 2026 · 1 skipped
+  - value: '0'
+    label: Language-model calls per negotiation
+    note: Rule-based
+visual: tacto
+order: 5
+featured: true
+audit: { revision: 700cf95, date: '2026-11-25' }
+dataNote: The replay is an offline re-run against the starter kit’s local simulator on its sample case S01 (kit stated as MIT-licensed), recorded 25 Nov 2026. The guard sandbox uses a hand-written synthetic case. No hosted-arena case data, supplier messages or replay links are published here.
+---
+
+import TactoDecision from '../../components/diagrams/TactoDecision.astro';
+import TactoDemo from '../../components/interactive/TactoDemo.astro';
+
+<Brief
+  problem="Negotiate multi-term procurement deals with supplier bots, unattended, in at most ten messages per supplier. A deal that breaks one of the buyer's must-haves scores zero, and so does walking away without an alternative."
+  solution="A rule-based Python agent that prices every term sheet by total cost, concedes step by step and accepts only checked offers. A guard layer validates each decision and enforces the must-haves before a message leaves."
+  role="Team Lead — Tacto Negotiation Arena"
+  contribution="Led the hackathon team and contributed to the development of the negotiation constraint-validation and enforcement logic: the must-have guard in the submitted agent chain, a confidence index, an early agent a teammate's agent builds on, and the first practice-run analysis."
+  outcomes={[
+    'Team result: agreements in 10 of 10 practice cases, mean score ≈ 0.72 (self-logged hosted practice evaluation, not an official ranking)',
+    'My guard layer runs inside the submitted agent chain',
+    '75 tests in my five test files pass (1 skipped), re-run 25 Nov 2026',
+    'No language model is called at negotiation time',
+  ]}
+  tech={['Python 3.12', 'Rule-based agents', 'pytest', 'uv', 'httpx']}
+/>
+
+## Summary
+
+Tacto set the challenge for a weekend hackathon in October 2026: build a buyer agent for a fictional pump maker. The agent negotiates by message with one to three supplier bots, exchanging term sheets (unit price, payment term, lead time, volume and similar fields), and then accepts one standing term sheet or walks away. Nobody may step in during a run. Each thread allows ten buyer messages and sixty seconds per message.
+
+A case is scored on total cost in euros, not unit price: `(C_open − C_deal) / (C_open − C_best)`, clipped to 0–1. A deal that breaks a must-have scores zero. So does ending without a deal when there is no alternative.
+
+I led our team of three. We built a rule-based agent in Python on top of Tacto's starter kit: every decision is arithmetic on the term sheets and the thread state, and no language model is called at negotiation time. In the hosted practice evaluation the team's submitted agent reached agreements in 10 of 10 cases with a mean score of about 0.72.
+
+My own technical work is the constraint validation and enforcement around that agent: a guard layer that forces every outgoing term sheet to satisfy the must-haves, verifies every accept, and keeps a thread alive while a sensible move is left.
+
+## Architecture
+
+<Figure n="1" caption="Decision path of the submitted chain. The guard checks whatever the decision logic returns before a message leaves. Simplified: one supplier thread, and the internals of BetterAgent, HealthScope and EvidenceAgent are reduced to one line each." source="agent/arena_kit/cli.py:126-127, guard.py:128-298, better_agent.py:238-262, agents/evidence.py:30-52 @ 700cf95" wide>
+  <TactoDecision />
+</Figure>
+
+Every agent in the repository implements one method, `decide(case, threads)`, and returns one message for one supplier: up to three term sheets, an accept of a standing sheet, or a walk-away. The submitted agent is four objects wrapped around each other: `EvidenceAgent(HealthScope(GuardedAgent(BetterAgent())))`.
+
+Per turn, a decision passes through three stages:
+
+1. **Constraint checks.** A term sheet is a candidate only if it has a price, keeps every must-have (`{field, op, value}` evaluated on the terms the deal would close on), costs less than the buyer's alternative and no more than the best opening quote. These predicates come from the starter kit.
+2. **Concession logic.** `BetterAgent`, implemented by my teammate Niko, picks an opening anchor below the supplier's quote and then matches the supplier's last move, sending up to three term sheets per message.
+3. **Acceptance.** The agent accepts a standing sheet only if it passes the checks and no other thread holds a cheaper one. A final offer from the supplier or the last allowed message relaxes how much margin it demands.
+
+Each supplier thread is a small state machine driven by the supplier: `open` stays open or becomes `final_offer`, `agreed`, `walked_away` or `no_bid`. The buyer can counter, send text, accept a standing sheet (which closes the whole case with a deal) or walk away (which closes the whole case without one).
+
+`GuardedAgent` receives the result of stages 2 and 3 and may replace it. `HealthScope` sets a supplier-health estimate for everything inside it, and `EvidenceAgent` rewrites only the message text to cite facts from the challenge's data package; it never touches term sheets or actions.
+
+## Engineering decisions
+
+### Force must-haves into every sheet, then force them again
+
+The commit that introduces the guard records the diagnosis from the first twenty practice sessions: four of ten cases per run ended without a deal, and the pattern was the same in each. On cases with a must-have, no agent ever asked for it in a term sheet. The kit's `complete_offer` snaps each value to the nearest allowed option, which could land on an option that breaks the must-have; the agents' own safety checks then rejected every sheet they produced, and they walked away or ran out of rounds.
+
+The guard commit adds a function that every agent can call on any sheet, instead of patching each agent's sheet builder:
+
+<p class="src">agent/arena_kit/guard.py:54-69 @ 700cf95</p>
+
+```python
+def satisfy_must_haves(case, terms, standard=None):
+    """A copy of `terms` with every must-have on a negotiable field satisfied, completed to a valid
+    sheet. Must-haves on fields we cannot negotiate are left alone."""
+    must = [m for m in case["buyer"].get("must_haves", []) if m["field"] in case["negotiable"]]
+    result = dict(terms)
+    for m in must:
+        cur = result.get(m["field"])
+        cur = snap(case, m["field"], cur) if cur is not None else cur  # complete_offer snaps it later
+        result[m["field"]] = cur if _fits(m, cur) else _must_have_value(case, m, cur)
+    result = complete_offer(case, result)
+    for m in must:  # a gap filled from the plan, or a snap, may have broken it again
+        if not _fits(m, result.get(m["field"])):
+            result[m["field"]] = _must_have_value(case, m, result.get(m["field"]))
+    if not must_haves_ok(case, result, standard):
+        log.debug("guard: must-haves still fail after fixing %s", result)
+    return result
+```
+
+The value is checked after snapping, not before, because a value that fits as typed can snap onto one that does not. When a field is violated the guard picks the boundary option (the largest allowed value for `<=`, the smallest for `>=`), which asks the supplier for the least it can.
+
+The weak spot: the boundary option is the cheapest concession to request, not necessarily the cheapest outcome for the buyer, and a must-have on a field that is not negotiable cannot be fixed at all. The function logs that case and returns the sheet anyway.
+
+### Wrap any agent instead of fixing each one
+
+By Saturday evening all three of us had agents in the repository. A wrapper on the `decide()` contract protects all of them, including the ones written later, which is how it ended up around the submitted agent. `GuardedAgent` branches on what the wrapped agent returns:
+
+- an **accept** is verified: the thread is live, the id is the supplier's standing sheet, the must-haves hold and the cost is below the alternative. An accept of an unmoved opening quote before we have written anything is deferred by one counter.
+- **term sheets** get their must-haves forced. On the last allowed message, a price below the supplier's standing price is replaced, because a refused push ends the case without a deal.
+- a **walk-away, an exception or an empty decision** goes to `_keep_going`:
+
+<p class="src">agent/arena_kit/guard.py:271-283 @ 700cf95</p>
+
+```python
+    def _keep_going(self, case, threads, preferred, reason):
+        """Rule d: never walk while something sensible is left."""
+        close = closing_move(case, threads)
+        if close["message"]["action"]["type"] == "walk_away" and reason == "delegate wanted to walk" and self._hopeless(case, threads):
+            self.log.info("%s guard: walk away stands (every thread is final, no counter beats the alternative)", self._case_id)
+            return close
+        if close["message"]["action"]["type"] == "accept":
+            asid = close["supplier_id"]
+            if (moves_left(case, threads[asid]) <= 1 or not self._eligible(case, threads, asid)
+                    or self._supplier_moved(case, threads, asid)):
+                self.log.info("%s guard: accept a safe standing sheet (%s)", self._case_id, reason)
+                return close
+        live = [s for s in live_threads(threads) if self._eligible(case, threads, s)]
+```
+
+If nothing safe can be accepted, the guard sends the supplier's own standing sheet back with the must-haves satisfied ("we can proceed at your price if the terms below work for you"). That counter is bounded: two per thread, one after a final offer. Every intervention writes a log line with its reason.
+
+The trade-off is that the guard overrides the judgement of the agent it wraps. A walk-away that was correct for a reason the guard cannot see is turned into two more messages. The guard also keeps a per-case counter in memory, which is state the rest of the design avoids.
+
+### A stateless confidence index
+
+An earlier commit of mine implements a different idea: estimate from the thread how close a supplier is to its floor, and concede faster when it is close. The index starts at 1.0 and subtracts hand-set penalties: a last concession near zero, a shrinking concession, floor wording in the message (sixteen fixed English and German phrases such as "final offer" or "no room"), contradicted claims, timeouts, a shorter validity period. It is recomputed from the thread on every turn, so it survives a crash and restart.
+
+<p class="src">agent/arena_kit/confidence.py:97-103 and agents/confident_boulware.py:21-23 @ 700cf95</p>
+
+```python
+    score = max(0.0, min(1.0, 1.0 + sum(parts.values())))
+    limit = case.get("round_limit", 10)
+    factor = min(1.0, 0.5 + 0.5 * moves_left(case, events) / limit) if include_rounds and limit > 0 else 1.0
+    parts["rounds"] = factor
+    if factor < 1.0:
+        notes.append(f"rounds factor {factor:.2f}")
+    return {"score": max(0.0, min(1.0, score * factor)), "parts": parts, "notes": notes}
+
+def effective_time(t, conf):
+    """conf 1 keeps the curve, conf 0 jumps to the final target."""
+    return 1.0 - (1.0 - t) * conf
+```
+
+Three agents used it; one bends a teammate's time-based concession curve with `effective_time`. The index is not part of the submitted chain: its weights are hand-set constants, the kit's scripted simulator gives no floor signals for it to react to, and on the hosted practice arena the confidence-based router closed six of ten cases (mean 0.21) before the guard existed. The stateless design is the part worth keeping.
+
+### Measure on the practice arena, and revert when it says no
+
+My own top-level agent, `final`, subclasses a teammate's reciprocal agent and changes four things: no throttling of our concession steps (the supplier bots mirrored small steps with equally small ones and the thread froze), silent suppliers are skipped instead of walked away from, a sheet that only fails a must-have is rescued before walking, and the last message is always an accept or a close.
+
+In ten practice sessions `final` closed 10 of 10 cases with a mean score of 0.58. Niko's `better` agent reached 0.72 on the same cases and is the agent the team submitted, wrapped in the guard. Petra's `combined` agent builds on `final`.
+
+The concession rule of `final` is short: open at 80% of the supplier's price (never below 75%, never above the price paid today), then close a growing share of the remaining gap each round, staying 5% below the supplier until the last two messages.
+
+<p class="src">agent/arena_kit/agents/final.py:134-146 @ 700cf95</p>
+
+```python
+    def _price(self, case, events, p):  # called by the inherited _sheets
+        sheets = [m["term_sheets"][0]["terms"].get("unit_price") for m in _mine(events) if m.get("term_sheets")]
+        mine = [x for x in sheets if x]
+        if not mine:
+            cur = case["buyer"].get("current_unit_price")
+            return max(ANCHOR_FLOOR * p, min(self.anchor * p, cur or p))
+        frac = min(FRAC_MAX, FRAC0 + FRAC_STEP * len(mine))
+        step = max(frac * (p - mine[-1]), MIN_STEP * p, _tick(p))
+        move = self._their_move(events)
+        if self.match is not None and move > 0:
+            step = max(MOVING_MIN * p, _tick(p), min(step, self.match * move))
+        top = p if moves_left(case, events) <= 2 else p * (1 - KEEP)
+        return max(mine[-1], min(top, mine[-1] + step))
+```
+
+The replay in the demo below is this rule at work: 13.98 is 80% of the supplier's opening 17.47.
+
+Decisions followed the measurements. An opening anchor at the buyer's current price lost on two practice cases and was removed five minutes after it was committed, with the measured loss in the commit message. A rewrite that bargained in supplier-value space scored 0.56 against 0.58 and stayed on a branch.
+
+## Demo
+
+Part A steps through one complete negotiation of my `final` agent, guard included, against the starter kit's scripted supplier on the kit's sample case. Part B is a TypeScript re-implementation of the guard's rules that you can drive yourself on an invented case. Both run in the browser; neither is a recording from the hackathon arena.
+
+<TryIt
+  steps={[
+    'In part A press <b>Next →</b> or drag the <b>Step</b> slider to follow the offers until the buyer agent accepts at step 12.',
+    'In part B set <b>Decision</b> to <b>Walk away</b>: the guard counters at the supplier’s price with all three must-haves corrected.',
+    'Switch back to <b>Counter-offer (draft sheet)</b> and change <b>Lead time, days</b> or <b>Defect rate, ppm</b> to watch one must-have fail and get fixed. <b>Reset sandbox</b> restores the start.',
+  ]}
+/>
+
+<div class="full">
+  <TactoDemo />
+</div>
+
+The two parts are complementary. The replay is a real run, and its sample case has no must-haves, so every check in it is valid and the guard passes every decision through. The sandbox opens on a draft that breaks all three must-haves of a synthetic case, so an invalid constraint and the guard's correction are visible before you touch anything. The submitted `better` agent is not replayed because it depends on the challenge's data package, which is not public.
+
+## Validation
+
+**Re-run for this page** (25 Nov 2026, isolated copy of revision `700cf95`, no arena credentials, no data package):
+
+- The repository's pytest suite: 410 passed, 72 skipped. The skipped tests need Tacto's data package, the hosted arena or an optional extra.
+- My five test files (guard, final agent, confidence index and its two agents): 75 passed, 1 skipped. Twenty-eight of them cover the guard.
+- The replay shown above was exported twice and the two files were byte-identical.
+- The browser re-implementation of the guard is tested against the original: the repository's `guard.py` was run unmodified on 17 synthetic scenarios (22 decisions) and five sheets, and the TypeScript port must return the same action, term sheets and log lines for each. Further tests mirror named tests from `agent/tests/test_guard.py` and check the replay data. The port covers one supplier thread and a simplified cost model; multi-supplier behaviour is not ported.
+
+**Reported by the repository** (logged by the team in `backlog.csv`; needs the hosted arena, so not re-run here):
+
+- The team's submitted agent reached agreements in 10 of 10 practice cases with a mean score of about 0.72, and reproduced that in 100 further sessions. The arena is deterministic given the agent's moves, so the repeat confirms reproducibility.
+- With the guard in place, the confidence-based router went from 6 of 10 closed practice cases (mean 0.21) to 8 of 10 (mean 0.29). That is one run each, so indicative rather than a controlled comparison. From the next agent generation on, which calls `satisfy_must_haves` directly, every logged ten-case run closed 10 of 10.
+
+These are practice-evaluation runs scored by the organiser's system and logged by the team. They are not an official ranking; the repository records no live-final result, and this page claims none.
+
+## My contribution
+
+### Leadership
+
+I was the Team Lead: I led the three-person hackathon team that built and submitted this agent.
+
+### My technical contributions
+
+- **Constraint validation and enforcement.** The must-have guard (`agent/arena_kit/guard.py`) and its 28 tests. It wraps the decision logic in the submitted chain, and its `satisfy_must_haves` function is called by the submitted agent directly.
+- **The first practice-run analysis.** Twenty practice sessions and the diagnosis that must-haves were never being asked for, both logged in the commit that adds the guard.
+- **The `final` agent** and its tests, which Petra's `combined` agent builds on.
+- **The confidence index** and three agents that use it, kept out of the submission.
+
+My commits were written with an AI coding assistant, as their co-author trailers show.
+
+### Team achievements
+
+- The submitted agent `better` reached agreements in 10 of 10 practice cases with a mean score of about 0.72 in the hosted practice evaluation. Niko implemented its decision logic and the evaluation harness.
+- Petra built the listener and combined agents and handled the releases.
+- The team's run log holds 415 practice-arena sessions from the weekend, and the last commit landed 23 minutes before the code freeze.
+
+<p class="src">backlog.csv (rows with environment “practice arena”); CHALLENGE.md:29-40 (freeze 11 Oct, 12:00); last commit 11 Oct, 11:37 @ 700cf95</p>
+
+The cost function, game loop and local simulator come from Tacto's starter kit. This page implies no employment by or endorsement from Tacto.
+
+## Limitations
+
+- **Practice evaluation only.** The measurements are from the practice arena and a local simulator; no live-final result is recorded.
+- **The supplier bots were deterministic.** They send a final offer at a fixed message number, and several timing rules rely on that. Against a person those rules would need rework.
+- **The agent reads structure, not language.** A supplier's objection registers only when it changes a term sheet.
+- **The guard is conservative by construction.** It sends the supplier's own price back with corrected terms; it never improves the price, and it can spend up to two of ten messages doing so.
+- **Multi-supplier runs are not bit-reproducible offline**, because messages to several suppliers are sent concurrently. Single-supplier runs are, which is why the replay uses one.
+- **Not fully verifiable from outside.** The 72 skipped tests need Tacto's data package, the hosted arena or an optional extra, and the repository has no licence file or continuous integration.
+
+## What I would do next
+
+- Measure the guard in a controlled experiment: the same agent with and without it, on the same cases, several sessions each.
+- Let the guard reason about cost as well as validity: when several options satisfy a must-have, choose by total cost instead of always taking the boundary.
+- Calibrate the confidence index against recorded supplier behaviour before using it again.
+- Derive the guard's counter count from the thread, so the wrapper is stateless like the rest of the chain.

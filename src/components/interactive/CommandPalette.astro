@@ -1,0 +1,177 @@
+---
+import { buildSearchIndex } from '../../lib/search-index';
+import { person } from '../../data/profile';
+
+const index = await buildSearchIndex();
+---
+
+<cmd-palette data-email={person.email}>
+  <dialog class="cmdk" aria-label="Search and commands">
+    <div class="cmdk-head">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.5"></circle>
+        <path d="m10.5 10.5 3.5 3.5" stroke-linecap="square"></path>
+      </svg>
+      <input
+        class="cmdk-input"
+        type="text"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="cmdk-list"
+        aria-autocomplete="list"
+        aria-label="Search projects, pages and actions"
+        placeholder="Search projects, pages, actions…"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="go"
+      />
+      <button class="cmdk-close" type="button" data-cmdk-close aria-label="Esc — close search">
+        <kbd>Esc</kbd>
+      </button>
+    </div>
+    <div class="cmdk-list" id="cmdk-list" role="listbox" aria-label="Results"></div>
+    <p class="cmdk-empty" hidden>No matches. Try “backend”, “python” or “contact”.</p>
+    <div class="cmdk-foot mono" aria-hidden="true">
+      <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>Esc</kbd> close</span>
+    </div>
+  </dialog>
+  <p class="cmdk-status visually-hidden" role="status" aria-live="polite"></p>
+  <script is:inline type="application/json" data-cmdk-index set:html={JSON.stringify(index)} />
+</cmd-palette>
+
+<script>
+  import '../../scripts/cmd-palette.ts';
+</script>
+
+<style is:global>
+  .cmdk {
+    width: min(40rem, calc(100vw - 2rem));
+    max-height: min(32rem, calc(100dvh - 6rem));
+    margin: clamp(1rem, 12vh, 7rem) auto auto;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-3);
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 40px 80px -20px rgb(0 0 0 / 0.6);
+    overflow: hidden;
+  }
+  .cmdk[open] {
+    display: flex;
+    flex-direction: column;
+    animation: cmdk-in var(--t-component) var(--ease-out);
+  }
+  .cmdk::backdrop {
+    background: rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(2px);
+  }
+  @keyframes cmdk-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.985);
+    }
+  }
+  .cmdk-head {
+    display: flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: 0 var(--s-4);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-3);
+  }
+  .cmdk-input {
+    flex: 1;
+    min-width: 0;
+    height: 3.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 1rem; /* ≥16px avoids iOS zoom */
+    outline: none;
+  }
+  .cmdk-input::placeholder {
+    color: var(--text-3);
+  }
+  .cmdk-close {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border: 0;
+    background: transparent;
+  }
+  .cmdk-list {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--s-2);
+  }
+  .cmdk-group {
+    padding: var(--s-3) var(--s-3) var(--s-1);
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .cmdk-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-4);
+    min-height: 2.75rem;
+    padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-2);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+  .cmdk-item[aria-selected='true'] {
+    background: var(--raised);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .cmdk-item .hint {
+    color: var(--text-3);
+    font-size: var(--text-xs);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .cmdk-empty {
+    padding: var(--s-6) var(--s-5);
+    color: var(--text-2);
+    font-size: var(--text-sm);
+  }
+  .cmdk-foot {
+    display: flex;
+    gap: var(--s-5);
+    padding: var(--s-3) var(--s-4);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-2xs);
+  }
+  .cmdk-foot kbd {
+    margin-right: 0.3em;
+  }
+  @media (max-width: 40em), (pointer: coarse) {
+    .cmdk-foot {
+      display: none;
+    }
+  }
+  @media (max-width: 40em) {
+    .cmdk-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+    }
+    .cmdk-item .hint {
+      text-align: left;
+      white-space: normal;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cmdk[open] {
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,474 @@
+---
+/**
+ * Preference-weighted routing on a synthetic graph. Logic: src/lib/rideplanner.ts (clean-room
+ * re-implementation of the scoring principle, not the hackathon code). The default state is
+ * rendered here at build time so the block is complete without JavaScript.
+ */
+import data from '../../data/demo/rideplanner.json';
+import { RidePlanner, buildDemoView, type DemoState, type RideGraph } from '../../lib/rideplanner';
+
+const graph = data as unknown as RideGraph;
+const { width: W, height: H } = data.viewBox;
+const initial: DemoState = { ...data.defaults, softHighway: false, avoidMotorways: false, softStraight: false };
+const view = buildDemoView(graph, new RidePlanner(graph), new RidePlanner(graph), initial);
+const nodeLabel = (n: { id: string; name?: string }) => (n.name ? `${n.id} · ${n.name}` : n.id);
+---
+
+<rideplanner-demo class="demo full">
+  <div class="demo-bar">
+    <span>Route scoring · {graph.nodes.length} nodes · {graph.edges.length} edges</span>
+    <span class="badge">Synthetic graph · educational re-implementation</span>
+  </div>
+  <p class="rp-notice">A re-implementation of the scoring principle on a hand-made graph. Not the hackathon code; no map and no ride data.</p>
+
+  <form>
+    <div class="demo-controls">
+      <div class="field rp-range">
+        <label for="rp-alpha"><span>Scenic weight <span class="rp-lc">α</span> </span><output for="rp-alpha" data-out="alpha">{initial.alpha.toFixed(1)}</output></label>
+        <input id="rp-alpha" name="alpha" type="range" min="0" max="6" step="0.1" value={initial.alpha} disabled />
+      </div>
+      <div class="field rp-range">
+        <label for="rp-beta"><span>Risk aversion <span class="rp-lc">β</span> </span><output for="rp-beta" data-out="beta">{initial.beta.toFixed(1)}</output></label>
+        <input id="rp-beta" name="beta" type="range" min="0" max="4" step="0.1" value={initial.beta} disabled />
+      </div>
+      <div class="field">
+        <label for="rp-from">Start</label>
+        <select id="rp-from" name="from" disabled>
+          {graph.nodes.map((n) => <option value={n.id} selected={n.id === initial.from}>{nodeLabel(n)}</option>)}
+        </select>
+      </div>
+      <div class="field">
+        <label for="rp-to">Destination</label>
+        <select id="rp-to" name="to" disabled>
+          {graph.nodes.map((n) => <option value={n.id} selected={n.id === initial.to}>{nodeLabel(n)}</option>)}
+        </select>
+      </div>
+      <fieldset class="rp-switches">
+        <legend>Road rules</legend>
+        <label class="rp-check"><input type="checkbox" name="avoid" disabled /> <span>Avoid motorways <small>hard exclusion</small></span></label>
+        <label class="rp-check"><input type="checkbox" name="soft" disabled /> <span>Penalise major roads <small>soft, h = 1</small></span></label>
+        <label class="rp-check"><input type="checkbox" name="straight" disabled /> <span>Penalise straight roads <small>soft, s = 2.5</small></span></label>
+      </fieldset>
+      <button type="reset" class="btn" disabled>Reset</button>
+    </div>
+    <noscript><p class="rp-nojs">The controls need JavaScript. The result below is the default setting, computed when the page was built.</p></noscript>
+  </form>
+
+  <div class="demo-stage">
+    <div class="rp-map">
+      <svg viewBox={`18 0 ${W - 36} ${H + 4}`} role="img" aria-label="Synthetic road graph with the fastest and the preferred route. The routes are listed in the result line and the table below." data-svg set:html={view.svg} />
+    </div>
+    <ul class="rp-legend" role="list">
+      <li><svg viewBox="0 0 34 12" aria-hidden="true"><path class="rp-fast" d="M0 6H34"></path></svg> Fastest (time only, α = β = 0)</li>
+      <li><svg viewBox="0 0 34 12" aria-hidden="true"><path class="rp-pref" d="M0 6H34"></path></svg> Preferred (current settings)</li>
+      <li><svg viewBox="0 0 34 12" aria-hidden="true"><path class="rp-e rp-mw-out" d="M0 6H34"></path><path class="rp-e rp-mw-in" d="M0 6H34"></path></svg> Motorway</li>
+      <li><svg viewBox="0 0 34 12" aria-hidden="true"><path class="rp-e rp-mw-out is-off" d="M0 6H34"></path><path class="rp-e rp-mw-in" d="M0 6H34"></path><path class="rp-x rp-x--key" d="M12 1l10 10m-10 0l10 -10"></path></svg> Excluded edge</li>
+      <li><svg viewBox="0 0 34 12" aria-hidden="true"><path class="rp-e rp-e--tertiary" d="M0 6Q6 -2 11 6Q17 14 23 6Q28 -2 34 6"></path></svg> Bends drawn in proportion to twist</li>
+    </ul>
+  </div>
+
+  <p class="rp-status" role="status" data-status>{view.status}</p>
+  <dl class="demo-readout" data-readout set:html={view.readout} />
+
+  <details>
+    <summary>Per-edge data for both routes</summary>
+    <div class="table-scroll" tabindex="0" role="group" aria-label="Per-edge data table" data-table set:html={view.table} />
+  </details>
+
+  <p class="demo-foot">
+    Cost per edge = time × (1 + α·(1 − scenic) + β·risk + h·highway[class] + s·(1 − twist)); the junction delay, time-of-day and rider-capability terms of the original are not modelled.
+    The graph is {data.provenance.kind}. {data.provenance.statement}{' '}
+    The cost structure mirrors a team hackathon project audited at revision <code>dde641f</code>; the cost design is my teammates’ work, the code here is a separate
+    TypeScript implementation written for this page. Runs entirely in the browser, with no network requests.
+  </p>
+</rideplanner-demo>
+
+<style is:global>
+  rideplanner-demo {
+    display: block;
+  }
+  .rp-notice,
+  .rp-status {
+    padding: var(--s-3) var(--s-4);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+    color: var(--text-2);
+  }
+  .rp-notice {
+    border-bottom: 1px solid var(--border);
+  }
+  .rp-status {
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    min-height: 4.2em;
+  }
+  rideplanner-demo .demo-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+  rideplanner-demo .rp-range {
+    grid-column: 1 / -1;
+  }
+  rideplanner-demo .rp-switches {
+    grid-column: 1 / -1;
+  }
+  rideplanner-demo .demo-controls > .btn {
+    justify-self: start;
+    min-width: 6rem;
+  }
+  rideplanner-demo .rp-range input {
+    height: 2.75rem;
+  }
+  rideplanner-demo .rp-range label {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+  rideplanner-demo output {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  rideplanner-demo select {
+    min-height: 2.75rem;
+    width: 100%;
+    min-width: 0;
+  }
+  .rp-switches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--s-5);
+  }
+  .rp-switches legend {
+    float: left;
+    width: 100%;
+    margin-bottom: var(--s-1);
+  }
+  .rp-check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: 2.75rem;
+    font-size: var(--text-sm);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .rp-check input {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    accent-color: var(--accent);
+    flex: none;
+  }
+  .rp-check small {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    color: var(--text-3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-left: 0.3em;
+    white-space: nowrap;
+  }
+  @media (min-width: 52em) {
+    rideplanner-demo .demo-controls {
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+    }
+    rideplanner-demo .rp-range {
+      grid-column: auto;
+    }
+    rideplanner-demo .rp-switches {
+      grid-column: 1 / span 3;
+    }
+    rideplanner-demo .demo-controls > .btn {
+      justify-self: end;
+    }
+  }
+
+  .rp-lc {
+    text-transform: none;
+  }
+  .rp-map > svg {
+    display: block;
+    overflow: hidden;
+  }
+  rideplanner-demo .rp-e,
+  rideplanner-demo .rp-fast,
+  rideplanner-demo .rp-pref,
+  rideplanner-demo .rp-x {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .rp-nojs {
+    padding: 0 var(--s-4) var(--s-3);
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+  rideplanner-demo :disabled,
+  rideplanner-demo .rp-check:has(:disabled) {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  rideplanner-demo input[type='range']::-webkit-slider-runnable-track {
+    background: var(--text-3);
+  }
+  rideplanner-demo input[type='range']::-moz-range-track {
+    background: var(--text-3);
+  }
+  @media print {
+    rideplanner-demo .table-scroll,
+    rideplanner-demo .rp-map,
+    rideplanner-demo .rp-map > svg {
+      overflow: visible;
+      max-height: none;
+    }
+  }
+  .rp-e {
+    stroke: var(--text-3);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+  }
+  .rp-e--primary {
+    stroke-width: 2;
+  }
+  .rp-mw-out {
+    stroke-width: 6;
+    stroke-linecap: butt;
+  }
+  .rp-mw-out.is-off {
+    stroke-dasharray: 2 5;
+  }
+  .rp-mw-in {
+    stroke: var(--surface);
+    stroke-width: 2.5;
+    stroke-linecap: butt;
+  }
+  .rp-x {
+    stroke: var(--text);
+    stroke-width: 1.5;
+  }
+  /* Fastest: a wide dashed band, so it stays visible on both sides of the preferred line when the two coincide. */
+  .rp-fast {
+    stroke: var(--info);
+    stroke-width: 11;
+    stroke-dasharray: 2.5 5.5;
+    stroke-linejoin: round;
+  }
+  .rp-pref {
+    stroke: var(--text);
+    stroke-width: 3.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .rp-n {
+    fill: var(--surface);
+    stroke: var(--text-2);
+    stroke-width: 1.25;
+    vector-effect: non-scaling-stroke;
+  }
+  .rp-n--from {
+    fill: var(--text);
+    stroke: var(--surface);
+    stroke-width: 2;
+  }
+  .rp-n--to {
+    stroke: var(--text);
+    stroke-width: 3;
+  }
+  .rp-l {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    fill: var(--text-3);
+    text-anchor: middle;
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+  }
+  .rp-l--below {
+    dominant-baseline: hanging;
+  }
+  .rp-l--end {
+    fill: var(--text);
+    font-weight: 600;
+    font-size: 12px;
+  }
+  /* Phones: the whole graph fits the width, so marks and labels are enlarged in drawing units to stay legible. */
+  @media (max-width: 44em) {
+    /* Graph first on a phone, so it stays in view above the controls that change it. */
+    rideplanner-demo {
+      display: flex;
+      flex-direction: column;
+    }
+    rideplanner-demo > .demo-stage {
+      order: 1;
+      padding: var(--s-3) var(--s-2);
+      border-bottom: 1px solid var(--border);
+    }
+    rideplanner-demo > .rp-status {
+      order: 2;
+      border-top: 0;
+      min-height: 0;
+    }
+    rideplanner-demo > form {
+      order: 3;
+      border-top: 1px solid var(--border);
+    }
+    rideplanner-demo > .demo-readout {
+      order: 4;
+      border-top: 0;
+    }
+    rideplanner-demo > details {
+      order: 5;
+    }
+    rideplanner-demo > .demo-foot {
+      order: 6;
+    }
+    rideplanner-demo .rp-switches {
+      grid-column: 1 / -1;
+    }
+    rideplanner-demo .demo-controls > .btn {
+      grid-column: 1 / -1;
+      justify-self: end;
+    }
+    .rp-check small {
+      display: none;
+    }
+    rideplanner-demo .demo-controls {
+      gap: var(--s-2) var(--s-4);
+      padding: var(--s-3) var(--s-4);
+    }
+    .rp-notice {
+      font-size: var(--text-xs);
+    }
+    .rp-e {
+      stroke-width: 1;
+    }
+    .rp-mw-out {
+      stroke-width: 4.5;
+    }
+    .rp-mw-in {
+      stroke-width: 1.75;
+    }
+    .rp-fast {
+      stroke-width: 8;
+      stroke-dasharray: 2 4;
+    }
+    .rp-pref {
+      stroke-width: 3;
+    }
+    .rp-n,
+    .rp-map .rp-x {
+      transform-box: fill-box;
+      transform-origin: center;
+      transform: scale(1.9);
+    }
+    .rp-l {
+      font-size: 25px;
+      stroke-width: 7px;
+    }
+    .rp-l--end {
+      font-size: 28px;
+    }
+    .rp-legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      padding-inline: var(--s-2);
+    }
+    .rp-legend li:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+  .rp-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-5);
+    margin-top: var(--s-3);
+    padding: var(--s-3) 0 0;
+    border-top: 1px solid var(--border);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+  .rp-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin: 0;
+  }
+  .rp-legend svg {
+    width: 34px;
+    height: 12px;
+    flex: none;
+    overflow: visible;
+  }
+  rideplanner-demo .demo-readout .rp-sub {
+    margin-top: 2px;
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    color: var(--text-3);
+  }
+  rideplanner-demo table {
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+  rideplanner-demo .rp-group th {
+    background: var(--raised);
+    color: var(--text);
+    font-weight: 600;
+    white-space: normal;
+  }
+  rideplanner-demo .rp-total > * {
+    font-weight: 600;
+    color: var(--text);
+    border-bottom: 1px solid var(--border-strong);
+  }
+</style>
+
+<script>
+  import data from '../../data/demo/rideplanner.json';
+  import { RidePlanner, buildDemoView, type DemoState, type RideGraph } from '../../lib/rideplanner';
+
+  const graph = data as unknown as RideGraph;
+
+  class RideplannerDemo extends HTMLElement {
+    private form!: HTMLFormElement;
+    private readonly planner = new RidePlanner(graph);
+    private readonly scan = new RidePlanner(graph, 128);
+
+    connectedCallback() {
+      this.form = this.querySelector('form')!;
+      // Controls are server-rendered disabled so they are not dead without JavaScript; enable them now.
+      for (const el of this.form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>('input, select, button')) el.disabled = false;
+      // Prime the cache with the server-rendered state so the statistics continue from what is shown.
+      buildDemoView(graph, this.planner, this.scan, this.state());
+      this.form.addEventListener('input', () => this.update());
+      this.form.addEventListener('submit', (e) => e.preventDefault());
+      this.form.addEventListener('reset', () => requestAnimationFrame(() => this.update()));
+    }
+
+    private state(): DemoState {
+      const f = new FormData(this.form);
+      return {
+        from: String(f.get('from')),
+        to: String(f.get('to')),
+        alpha: Number(f.get('alpha')),
+        beta: Number(f.get('beta')),
+        softHighway: f.has('soft'),
+        avoidMotorways: f.has('avoid'),
+        softStraight: f.has('straight'),
+      };
+    }
+
+    private update() {
+      const s = this.state();
+      const view = buildDemoView(graph, this.planner, this.scan, s);
+      this.querySelector('[data-svg]')!.innerHTML = view.svg;
+      this.querySelector('[data-readout]')!.innerHTML = view.readout;
+      this.querySelector('[data-table]')!.innerHTML = view.table;
+      this.querySelector('[data-status]')!.textContent = view.status;
+      this.querySelector('[data-out="alpha"]')!.textContent = s.alpha.toFixed(1);
+      this.querySelector('[data-out="beta"]')!.textContent = s.beta.toFixed(1);
+    }
+  }
+
+  if (!customElements.get('rideplanner-demo')) customElements.define('rideplanner-demo', RideplannerDemo);
+</script>
