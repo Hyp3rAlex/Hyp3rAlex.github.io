@@ -1,0 +1,47 @@
+---
+/**
+ * Keeps the list that precedes this component in the order defined by src/lib/project-order.ts.
+ *
+ * It moves the DOM nodes themselves, so visual order, reading order and tab order stay identical.
+ * The script is inline and sits directly after the list: it runs while the page is parsed, before the
+ * cards are painted, so nothing visibly jumps. Without JavaScript the list keeps its canonical order.
+ *
+ * Items need `data-project="<id>"`. A filter is read from `data-order-filter` on the list; dispatch a
+ * `project-order` event on the list after changing it.
+ */
+import { orderTable } from '../../lib/project-order';
+
+interface Props {
+  /** Project ids in canonical order, as rendered. */
+  ids: string[];
+  /** Media query of the single-column layout of this list. */
+  narrow: string;
+  filters?: string[];
+}
+const { ids, narrow, filters = ['all'] } = Astro.props;
+const table = orderTable(ids, filters);
+---
+
+<script is:inline define:vars={{ table, narrow }}>
+  const list = document.currentScript.previousElementSibling;
+  const mq = window.matchMedia(narrow);
+  const items = {};
+  for (const el of list.children) if (el.dataset.project) items[el.dataset.project] = el;
+  if (!list.dataset.orderFilter) {
+    const asked = new URLSearchParams(location.search).get('filter');
+    list.dataset.orderFilter = asked && table.wide[asked] ? asked : 'all';
+  }
+  const sync = () => {
+    const set = mq.matches ? table.narrow : table.wide;
+    const order = (set[list.dataset.orderFilter] || set.all).filter((id) => items[id]);
+    const now = [...list.children].map((el) => el.dataset.project).filter(Boolean);
+    if (order.join() !== now.join()) for (const id of order) list.append(items[id]);
+    set.all.forEach((id, n) => {
+      const idx = items[id] && items[id].querySelector('.idx');
+      if (idx) idx.textContent = String(n + 1).padStart(2, '0');
+    });
+  };
+  list.addEventListener('project-order', sync);
+  mq.addEventListener('change', sync);
+  sync();
+</script>

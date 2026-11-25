@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import ProjectCard from '../../components/projects/ProjectCard.astro';
+import ProjectOrder from '../../components/projects/ProjectOrder.astro';
 import { CATEGORIES } from '../../content.config';
 import allow from '../../data/repos.json';
 import meta from '../../data/github-metadata.json';
@@ -49,12 +50,13 @@ const filters = [
       <ul class="plist" role="list">
         {
           projects.map((p, i) => (
-            <li data-category={[p.data.category, ...p.data.alsoIn].join(' ')} data-team={p.data.team ? 'team' : 'solo'}>
+            <li data-project={p.id} data-category={[p.data.category, ...p.data.alsoIn].join(' ')} data-team={p.data.team ? 'team' : 'solo'}>
               <ProjectCard project={p} index={i} heading="h2" />
             </li>
           ))
         }
       </ul>
+      <ProjectOrder ids={projects.map((p) => p.id)} narrow="(max-width: 43.99em)" filters={filters.map((f) => f.id)} />
       <p class="none" hidden>No project matches this filter.</p>
     </project-filter>
   </section>
@@ -114,6 +116,7 @@ const filters = [
       const bar = this.querySelector<HTMLElement>('.filter-bar')!;
       const status = this.querySelector<HTMLElement>('.filter-status')!;
       const none = this.querySelector<HTMLElement>('.none')!;
+      const list = this.querySelector<HTMLElement>('.plist')!;
       const items = [...this.querySelectorAll<HTMLElement>('.plist > li')];
       const buttons = [...this.querySelectorAll<HTMLButtonElement>('[data-filter]')];
       const valid = new Set(buttons.map((b) => b.dataset.filter!));
@@ -130,6 +133,9 @@ const filters = [
           li.hidden = !match;
           if (match) shown += 1;
         }
+        // Order of the visible cards for this filter and layout (see ProjectOrder.astro).
+        list.dataset.orderFilter = id;
+        list.dispatchEvent(new Event('project-order'));
         for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.filter === id));
         none.hidden = shown > 0;
         status.textContent = `${shown} of ${items.length} shown`;

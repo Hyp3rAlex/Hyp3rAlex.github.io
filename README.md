@@ -59,6 +59,8 @@ tests/unit  tests/e2e
 
 **Update a case study or demo** — text in `src/content/projects/<slug>.mdx`; demo logic in `src/lib/<name>.ts` with its unit test; the demo element in `src/components/interactive/`; its end-to-end test in `tests/e2e/demo-<name>.spec.ts`. Numbers quoted in the text must match what the tests assert.
 
+**Project order** — the canonical order is the `order` field of each case study. `src/lib/project-order.ts` holds the two deliberate deviations: the order for single-column (phone) layouts on the home page and the unfiltered Work list, and the priority within the Software and Data & automation filters. `ProjectOrder.astro` applies it by moving the list items themselves, so visual, reading and keyboard order stay the same; without JavaScript the canonical order is shown. Recruiter mode and the CVs are ordered separately (`focusAreas`).
+
 **Update the site's own metrics** — after re-measuring, edit `src/data/site-metrics.ts` (the portfolio case study and its card read from it).
 
 **Add a project**

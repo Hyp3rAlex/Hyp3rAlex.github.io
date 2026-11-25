@@ -37,6 +37,7 @@ RELEASE_EXCLUDE=(
   'docs/VERSIONS.md'           # local backup and restore notes for the working copy
   'docs/TOOLING.md'            # description of the development machine
   'docs/PUBLICATION.md'        # owner's runbook for the working copy
+  'docs/RELEASE.md'            # internal release record and maintenance runbook
 )
 
 # The only e-mail address that may appear in the tree (besides noreply/example addresses).

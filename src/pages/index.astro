@@ -4,6 +4,7 @@ import Base from '../layouts/Base.astro';
 import HeroSheet from '../components/identity/HeroSheet.astro';
 import SignalTrace from '../components/identity/SignalTrace.astro';
 import ProjectCard from '../components/projects/ProjectCard.astro';
+import ProjectOrder from '../components/projects/ProjectOrder.astro';
 import { person, site, education, experience, leadership } from '../data/profile';
 import { capabilities } from '../data/capabilities';
 
@@ -108,19 +109,20 @@ const jsonLd = [
       <div class="work-grid">
         {
           flagship && (
-            <div class="w-feature" data-reveal>
+            <div class="w-feature" data-project={flagship.id} data-reveal>
               <ProjectCard project={flagship} index={0} layout="feature" />
             </div>
           )
         }
         {
           rest.map((p, i) => (
-            <div class={`w-${i}`} data-reveal style={`--i:${i % 2}`}>
+            <div class={`w-${i}`} data-project={p.id} data-reveal style={`--i:${i % 2}`}>
               <ProjectCard project={p} index={i + 1} />
             </div>
           ))
         }
       </div>
+      <ProjectOrder ids={projects.map((p) => p.id)} narrow="(max-width: 47.99em)" />
       <p class="work-more">
         <a class="link-arrow" href="/projects/">All projects and repository index <span class="arrow" aria-hidden="true">→</span></a>
       </p>
